@@ -81,7 +81,7 @@ function retryDelay(ms,signal){
  });
 }
 
-export function createTencentKlineController({frame,isHidden=()=>document.hidden,onState=()=>{}}={}){
+export function createTencentKlineController({isHidden=()=>document.hidden,onState=()=>{}}={}){
  const inflight=new Set();
  let symbol="",candles=[],historyComplete=false,selection=0,activeRequest=null,destroyed=false,paused=false,selectedExpectedDate="";
  const canWork=()=>!destroyed&&!paused&&!isHidden();
