@@ -51,10 +51,10 @@ try{
    const visit=rules=>{for(const rule of rules){if(rule.type===12&&/not\s*\(\s*height\s*:\s*100dvh\s*\)/i.test(rule.conditionText||""))return true;if(rule.cssRules&&visit(rule.cssRules))return true;}return false};
    return [...doc.styleSheets].some(sheet=>{try{return visit(sheet.cssRules)}catch(_){return false}});
   };
-  const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),wheel=frame.contentDocument.querySelector(".tf"),wheelStyle=wheel?getComputedStyle(wheel):null;
+  const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),period=frame.contentDocument.querySelector(".tf .period"),periodStyle=period?getComputedStyle(period):null,periodContainer=frame.contentDocument.querySelector(".tf"),periodContainerStyle=periodContainer?getComputedStyle(periodContainer):null;
   const safeBottom=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--v6-safe-bottom"))||0,frameRect=frame.getBoundingClientRect();
   const frameFallback=frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%");
-  const wheelReady=Boolean(wheel&&wheelStyle.scrollSnapType.includes("y")&&wheel.querySelectorAll("button").length===5&&[...wheel.querySelectorAll("button")].every(b=>b.textContent.trim()==="1D"));
+  const singlePeriodReady=Boolean(period&&period.textContent.trim()==="1D"&&frame.contentDocument.querySelectorAll(".tf .period").length===1&&frame.contentDocument.querySelectorAll(".tf button").length===0&&periodContainer&&periodContainer.scrollHeight<=periodContainer.clientHeight&&periodContainerStyle.scrollSnapType==="none"&&frameStyle.pointerEvents==="none");
   const read=()=>JSON.parse(localStorage.getItem(key)||"null");
   const send=(type,id,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:"touch",clientX:x,clientY:y,button:0,buttons:type==="pointerup"||type==="pointercancel"?0:1}));
   const rect=canvas.getBoundingClientRect(),cx=rect.left+rect.width*.55,cy=rect.top+rect.height*.5;
@@ -67,11 +67,11 @@ try{
   send("pointermove",73,cx+100,cy);send("pointerup",73,cx+100,cy);send("pointerup",72,cx-45,cy);
   const pinched=read();
   send("pointerdown",74,cx,cy);send("pointercancel",74,cx,cy);
-  return {mainFallback,frameFallback,wheelReady,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
+  return {mainFallback,frameFallback,singlePeriodReady,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
  });
- if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback||!viewportInteraction.wheelReady)throw new Error("Fullscreen fallback or Media-style fixed-1D timeframe wheel contract failed: "+JSON.stringify(viewportInteraction));
+ if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback||!viewportInteraction.singlePeriodReady)throw new Error("Fullscreen fallback or residue-free static 1D period contract failed: "+JSON.stringify(viewportInteraction));
  if(!viewportInteraction.dragChanged||!viewportInteraction.pinchChanged)throw new Error("K-line drag/pinch interaction contract failed: "+JSON.stringify(viewportInteraction));
- console.log("CN viewport interaction and CSS fallback:",JSON.stringify(viewportInteraction));
+ console.log("CN viewport interaction and static 1D display:",JSON.stringify(viewportInteraction));
  if(errors.length)throw new Error(errors.join(" | "));
  for(let pass=1;pass<=2;pass++){
   await page.reload({waitUntil:"domcontentloaded"});
