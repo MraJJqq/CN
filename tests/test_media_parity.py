@@ -74,7 +74,7 @@ class MediaParityTests(unittest.TestCase):
   # Cards: the 500-stock adapter may virtualize DOM nodes, but must retain
   # the Media ring's drag, inertia, selection, pause and lifecycle behavior.
   cards=self.read("site/assets/rolling-cards.js")
-  for marker in ("function createCard","function fling(","setPointerCapture","pointerdown","pointermove","pointerup","wheel","VEGAS_CARD_SELECT","VEGAS_CARD_INTERACTION","IntersectionObserver","ResizeObserver","visibilitychange","pagehide","pageshow","function setCardOrder"):
+  for marker in ("function createCard","function fling(","setPointerCapture","pointerdown","pointermove","pointerup","wheel","VEGAS_CARD_SELECT","VEGAS_CARD_INTERACTION","IntersectionObserver","ResizeObserver","visibilitychange","pagehide","pageshow","window.setCardOrder"):
    self.assertIn(marker,cards)
 
   # Logo: preserve staged transitions and lifecycle-safe A-share calendar countdown.
