@@ -60,4 +60,42 @@ class MediaParityTests(unittest.TestCase):
   self.assertNotIn("gate-kline-controller",app)
   self.assertNotIn("public-signals.json",app)
 
+
+ def test_all_seven_systems_retain_the_media_behavior_contract(self):
+  # K-line + viewport: retain the reusable view/gesture/state mechanisms while
+  # the Tencent controller remains the only A-share data adapter.
+  view=self.read("site/assets/kline/v6-kline-view.js")
+  viewport=self.read("site/assets/kline/v6-viewport-state.js")
+  for marker in ("pointerdown","pointermove","pointerup","setPointerCapture","setView","destroy"):
+   self.assertIn(marker,view)
+  for marker in ("captureViewportState","normalizeViewportState","resolveViewportRight","VIEWPORT_STORAGE_KEY"):
+   self.assertIn(marker,viewport)
+
+  # Cards: the 500-stock adapter may virtualize DOM nodes, but must retain
+  # the Media ring's drag, inertia, selection, pause and lifecycle behavior.
+  cards=self.read("site/assets/rolling-cards.js")
+  for marker in ("function createCard","function fling(","setPointerCapture","pointerdown","pointermove","pointerup","wheel","VEGAS_CARD_SELECT","VEGAS_CARD_INTERACTION","IntersectionObserver","ResizeObserver","visibilitychange","pagehide","pageshow","function setCardOrder"):
+   self.assertIn(marker,cards)
+
+  # Logo: preserve staged transitions and lifecycle-safe A-share calendar countdown.
+  logo=self.read("site/assets/modules/logo/logo.js")
+  for marker in ("VEGAS_LOGO_TRANSITION_START","VEGAS_LOGO_TRANSITION_CANCEL","VEGAS_LOGO_SET_SYMBOL","startPreparedTransition","cancelPreparedTransition","1500","refreshCalendar","nextTradingClose","scheduleClock","stopClock","pagehide","pageshow"):
+   self.assertIn(marker,logo)
+
+  # Fixed 1D is the A-share adapter; the isolated iframe message contract remains.
+  timeframe=self.read("site/assets/modules/timeframe-switch/index.html")
+  for marker in ('timeframe==="1D"',"VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_SELECT","VEGAS_TIMEFRAME_READY","event.source!==window.parent","location.origin"):
+   self.assertIn(marker,timeframe)
+
+  # Ticker: dynamic A-share signal rows must keep the continuous marquee engine.
+  ticker=self.read("site/assets/modules/signal-ticker/ticker.js")
+  for marker in ("function layout()","function schedule()","function render(","--signal-distance","--signal-duration","animationPlayState","ResizeObserver","function destroy()","cancelFrame","replaceChildren"):
+   self.assertIn(marker,ticker)
+
+  # Full-screen dynamic remains the single owner of outer viewport geometry.
+  fullscreen=self.read("site/assets/css/full-screen-dynamic.css")
+  for marker in ("100dvh","safe-area-inset-top","safe-area-inset-bottom","orientation:landscape","orientation:portrait","@supports not (height: 100dvh)","#timeframe-frame","#signal-ticker"):
+   self.assertIn(marker,fullscreen)
+
+
 if __name__=="__main__":unittest.main()
