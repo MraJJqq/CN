@@ -45,7 +45,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("stock_zh_a_hist_tx",self.scanner);self.assertIn("Tencent qt.gtimg.cn",self.scanner)
   self.assertIn('TIMEFRAME="1D"',self.kline);self.assertIn('DB_NAME="cn-market-cache"',self.kline)
  def test_daily_timeframe_and_logo_linkage(self):
-  self.assertIn('<span class="period" aria-current="true">1D</span>',self.tf);self.assertIn("const valid = '1D'",self.tf);self.assertIn('timeframe:"1D"',self.app)
+  self.assertIn('<span class="period" aria-current="true">1D</span>',self.tf);self.assertIn('timeframe:"1D"',self.app)
   self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.logo);self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.app)
  def test_cards_and_signal_flow(self):
   self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("No change",self.ticker)
@@ -66,8 +66,11 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertNotIn("responsive.css",self.index)
   self.assertNotIn("scroll-snap",self.tf)
   self.assertNotIn("VEGAS_TIMEFRAME_SELECT",self.tf)
+  self.assertNotIn("VEGAS_TIMEFRAME_SET",self.tf)
+  self.assertNotIn("<script>",self.tf)
   self.assertNotIn("button",self.tf)
   self.assertNotIn("VEGAS_TIMEFRAME_SELECT",self.app)
+  self.assertNotIn("VEGAS_TIMEFRAME_SET",self.app)
   self.assertIn("pointer-events:none!important",self.tf_host)
   self.assertIn("clip-path:inset(68.83% 0 0 0)",self.tf_host)
   self.assertIn("height:calc(100vh - var(--v6-safe-bottom, 0px))!important",self.tf_host)
