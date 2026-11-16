@@ -40,7 +40,7 @@ class MediaParityTests(unittest.TestCase):
   self.assertIn('lifecycle.listen(window,"unhandledrejection"',app)
   self.assertIn("signalRefreshController?.abort()",app)
   self.assertIn("if(destroyed||isHidden())return null;",app)
-  self.assertIn('if($("app").classList.contains("is-symbol-transitioning"))sendTimeframe();else syncFrames()',app)
+  self.assertIn('if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart()}else syncFrames()',app)
   self.assertIn("function resume({refresh=true,nextSymbol=symbol",self.read("site/assets/kline/tencent-kline-controller.js"))
  def test_card_rotation_matches_media_baseline(self):
   cn=self.read("site/assets/rolling-cards.js")
