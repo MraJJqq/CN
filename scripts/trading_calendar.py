@@ -162,10 +162,8 @@ def main() -> int:
 
     if args.github_output:
         with Path(args.github_output).open("a", encoding="utf-8") as handle:
-            handle.write(f"is-trading-day={'true' if status['is_trading_day'] else 'false'}
-")
-            handle.write(f"trade-date={day.isoformat()}
-")
+            handle.write(f"is-trading-day={'true' if status['is_trading_day'] else 'false'}\n")
+            handle.write(f"trade-date={day.isoformat()}\n")
 
     print(json.dumps(status, ensure_ascii=False), flush=True)
     if not status["is_trading_day"]:
