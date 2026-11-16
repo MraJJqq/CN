@@ -70,10 +70,10 @@ class MediaParityTests(unittest.TestCase):
    self.assertIn(marker,view)
   for marker in ("captureViewportState","normalizeViewportState","resolveViewportRight","VIEWPORT_STORAGE_KEY"):
    self.assertIn(marker,viewport)
-  for marker in ("migrateLegacyViewportKey","vegas-v6-viewport:"):
-   self.assertIn(marker,view)
+  self.assertNotIn("migrateLegacyViewportKey",view)
+  self.assertNotIn("vegas-v6-viewport:",view)
   controller=self.read("site/assets/kline/tencent-kline-controller.js")
-  self.assertIn("migrateLegacyViewportKey?.(key)",controller)
+  self.assertNotIn("migrateLegacyViewportKey",controller)
 
   # Cards: the 500-stock adapter may virtualize DOM nodes, but must retain
   # the Media ring's drag, inertia, selection, pause and lifecycle behavior.
@@ -88,8 +88,10 @@ class MediaParityTests(unittest.TestCase):
 
   # Fixed 1D is the A-share adapter; the isolated iframe message contract remains.
   timeframe=self.read("site/assets/modules/timeframe-switch/index.html")
-  for marker in ("const valid = ['1D']","scroll-snap-type: y mandatory","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_SELECT","VEGAS_TIMEFRAME_READY","event.source !== window.parent","location.origin"):
+  for marker in ('<span class="period" aria-current="true">1D</span>',"const valid = '1D'","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_READY","event.source !== window.parent","location.origin"):
    self.assertIn(marker,timeframe)
+  for marker in ("scroll-snap","VEGAS_TIMEFRAME_SELECT","cloneNode","<button"):
+   self.assertNotIn(marker,timeframe)
 
   # Ticker: dynamic A-share signal rows must keep the continuous marquee engine.
   ticker=self.read("site/assets/modules/signal-ticker/ticker.js")
