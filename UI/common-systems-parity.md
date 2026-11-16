@@ -10,7 +10,7 @@
 | 2. 视窗与手势 | `V6/kline/v6-viewport-state.js`、`V6/modules/kline-rotation-pause.js`、共享生命周期 | `site/assets/kline/v6-viewport-state.js`、`rotation-pause.js`、`site/assets/shared/*` | 保留时间锚点、拖动、双指缩放、惯性、双击暂停、页面隐藏恢复；持久化键使用CN独立命名空间。 |
 | 3. 滚动卡片 | `V6/cards/rolling-cards.js`、`rolling-cards.css` | `site/assets/rolling-cards.js`、`rolling-cards.css` | 环形布局、拖动、惯性、点选、双击暂停、动态尺寸和变化时刷新文本沿用；数据来自CN500，DOM只挂载当前信号集。A股没有完整500只股票Logo资产，因此卡片显示名称/代码，不伪造Logo。 |
 | 4. Logo与倒计时 | `V6/modules/logo/logo.{html,css,js}` | `site/assets/modules/logo/logo.{html,css,js}` | 保留品牌块、名称/代码、淡入淡出和父子消息；倒计时改用A股交易日历。切换时先与K线同步淡出，数据就绪后再同步显示。 |
-| 5. 周期选择 | `V6/modules/timeframe-switch/index.html`、`host.css` | `site/assets/modules/timeframe-switch/index.html`、`responsive.css`、`host.css` | 保留独立iframe、父子消息、可视状态和响应式容器；选项固定为1D，不引入其他周期。 |
+| 5. 周期选择 | `V6/modules/timeframe-switch/index.html`、`host.css` | `site/assets/modules/timeframe-switch/index.html`、`host.css` | 保留独立iframe、父子就绪消息和裁切容器；只显示一个静态1D标签，不保留滚轮、克隆、滚动或点击交互。 |
 | 6. 信号栏 | `V6/modules/signal-ticker/{ticker.js,v12-feed.js}` | `site/assets/modules/signal-ticker/ticker.js` | 保留连续滚动、ResizeObserver、动画时间线不因普通布局变化重启、销毁清理；信号内容由A股日线信号快照提供，不接入V12市场池。 |
 | 7. 全屏动态 | `V6/assets/css/full-screen-dynamic.css`、`v6-modules.css` | `site/assets/css/full-screen-dynamic.css`、`v6-modules.css`、`app.css` | 保留动态视口、安全区、横竖屏、单一外层几何控制；CN的1D控件、底部留白和#101010容器为A股布局适配。 |
 
