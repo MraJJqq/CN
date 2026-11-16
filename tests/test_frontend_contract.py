@@ -89,7 +89,7 @@ class CNFrontendContractTests(unittest.TestCase):
   view=(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8")
   for content in (self.index,logo_html):
    self.assertNotIn("cn-viewport-20261110-1",content)
-   self.assertIn("cn-batch-20261112-1",content)
+   self.assertIn("cn-batch-20261116-1",content)
   self.assertIn("?v=cn-ema-snapshot-20261116-1",self.app)
   self.assertIn("?v=cn-ema-snapshot-20261116-1",view)
  def test_cards_share_one_initial_snapshot_request(self):

@@ -11,7 +11,7 @@ except ImportError:
 import numpy as np
 import pandas as pd
 import requests
-SOURCE="Tencent via AKShare stock_zh_a_hist_tx"; NAME_SOURCE="Tencent qt.gtimg.cn"; SCHEMA=5; START=""; OVERLAP_DAYS=14
+SOURCE="Tencent via AKShare stock_zh_a_hist_tx"; NAME_SOURCE="Tencent qt.gtimg.cn"; SCHEMA=5; OVERLAP_DAYS=14
 PERIODS=(12,144,169,576,676)
 CHART_BAR_LIMIT=1200
 def to_tencent_symbol(value):
