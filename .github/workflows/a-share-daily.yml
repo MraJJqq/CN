@@ -1,4 +1,4 @@
-name: CC A-share Daily Cache and Publish
+name: CN A-share Daily Cache and Publish
 # Tencent scans are independent from frontend-only Pages releases.
 on:
   push:
@@ -12,7 +12,7 @@ on:
     # 16:30 China Standard Time, after the A-share cash market closes.
     - cron: "30 8 * * 1-5"
 concurrency:
-  group: cc-a-share-daily
+  group: cn-a-share-daily
   cancel-in-progress: false
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .cache/cn500-tencent-qfq
-          key: cc-cn500-tencent-qfq-v4-${{ github.run_id }}
+          key: cn-cn500-tencent-qfq-v5-${{ github.run_id }}
           restore-keys: |
             cc-cn500-tencent-qfq-v4-
       - name: Backfill or incrementally update Tencent daily history
@@ -83,7 +83,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cc-a-share-${{ github.run_number }}
+          name: cn-a-share-${{ github.run_number }}
           path: |
             results/a-share/
             site/data/
@@ -99,7 +99,7 @@ jobs:
     if: needs.scan-and-cache.outputs.has-data == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     concurrency:
-      group: cc-pages-deploy
+      group: cn-pages-deploy
       cancel-in-progress: false
     permissions:
       contents: read
@@ -110,6 +110,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/configure-pages@v5
-      - name: Deploy CC to GitHub Pages
+      - name: Deploy CN to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

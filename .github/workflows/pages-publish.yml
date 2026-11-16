@@ -1,4 +1,4 @@
-name: CC Pages Frontend Publish
+name: CN Pages Frontend Publish
 # Publish frontend-only changes without invoking the Tencent CN500 scan.
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: cc-pages-deploy
+  group: cn-pages-deploy
   cancel-in-progress: false
 jobs:
   deploy:
@@ -32,8 +32,8 @@ jobs:
           restored=0
           while read -r run_id run_number; do
             [ -n "$run_id" ] || continue
-            rm -rf .cc-data-artifact site/data
-            if ! gh run download "$run_id" --name "cc-a-share-$run_number" --dir .cc-data-artifact; then
+            rm -rf .cn-data-artifact site/data
+            if ! gh run download "$run_id" --name "cn-a-share-$run_number" --dir .cc-data-artifact; then
               continue
             fi
             if [ ! -d .cc-data-artifact/site/data ]; then
@@ -54,6 +54,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
-      - name: Deploy CC frontend
+      - name: Deploy CN frontend
         id: deployment
         uses: actions/deploy-pages@v4

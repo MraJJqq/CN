@@ -82,9 +82,9 @@ def validate_payload(data: Path) -> dict:
             raise ValueError(f"Invalid or date-mismatched compressed chart payload: {path.name}")
         if chart.get("ema_schema") != 2 or chart.get("ema_periods") != [12, 144, 169, 576, 676] or chart.get("ema_source") != "full-history-per-bar":
             raise ValueError(f"Missing full-history EMA series metadata: {path.name}")
-        for index in range(7):
-            values = [bar[5 + index] for bar in chart["bars"] if isinstance(bar, list) and len(bar) == 12]
-            if len(values) != len(chart["bars"]) or not isinstance(values[-1], (int, float)) or values[-1] <= 0 or any(value is not None and (not isinstance(value, (int, float)) or value <= 0) for value in values):
+        for index in range(5):
+            values = [bar[5 + index] for bar in chart["bars"] if isinstance(bar, list) and len(bar) == 10]
+            if len(values) != len(chart["bars"]) or any(value is not None and (not isinstance(value, (int, float)) or value <= 0) for value in values):
                 raise ValueError(f"Invalid full-history EMA values: {path.name}")
 
     return {

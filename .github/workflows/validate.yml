@@ -1,4 +1,4 @@
-name: CC Validation
+name: CN Validation
 on:
   push:
     branches: [main]
@@ -36,13 +36,13 @@ jobs:
           node-version: 22
       - name: Install browser test dependencies
         run: |
-          npm install --no-package-lock
+          npm install --no-save --no-package-lock playwright
           npx playwright install --with-deps chromium
       - name: Generate isolated CN500 browser fixtures
         run: python tests/create_browser_fixtures.py
       - name: Verify frontend in Chromium at five viewport sizes
         run: |
-          python -m http.server 8765 --directory site >/tmp/cc-http.log 2>&1 &
+          python -m http.server 8765 --directory site >/tmp/cn-http.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
