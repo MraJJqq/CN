@@ -1,0 +1,115 @@
+name: CC A-share Daily Cache and Publish
+# Tencent scans are independent from frontend-only Pages releases.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "config/**"
+      - "requirements.txt"
+  workflow_dispatch:
+  schedule:
+    # 16:30 China Standard Time, after the A-share cash market closes.
+    - cron: "30 8 * * 1-5"
+concurrency:
+  group: cc-a-share-daily
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  scan-and-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    outputs:
+      has-data: ${{ steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install pip-audit
+          pip-audit -r requirements.txt
+      - name: Test backend data and frontend system contracts
+        run: python -m unittest discover -s tests -v
+      - name: Check A-share trading calendar
+        id: calendar
+        run: python scripts/trading_calendar.py --write site/data/trading-calendar.json --github-output "$GITHUB_OUTPUT"
+      - name: Restore Tencent CN500 cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/cn500-tencent-qfq
+          key: cc-cn500-tencent-qfq-v4-${{ github.run_id }}
+          restore-keys: |
+            cc-cn500-tencent-qfq-v4-
+      - name: Backfill or incrementally update Tencent daily history
+        id: scan
+        if: steps.calendar.outputs.is-trading-day == 'true'
+        run: python scripts/a_share_cache.py --workers 4 --cache-dir .cache/cn500-tencent-qfq
+      - name: Validate complete Pages data payload
+        if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
+        run: python scripts/validate_pages_payload.py
+      - name: Check Bark credentials
+        id: bark
+        if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: |
+          if [ -n "$BARK_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Bark credentials are configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Bark push is disabled: add the repository Actions secret BARK_KEY in Settings > Secrets and variables > Actions."
+          fi
+      - name: Push CN500 daily signals to Bark
+        if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && steps.bark.outputs.configured == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        continue-on-error: true
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          BARK_SERVER: ${{ secrets.BARK_SERVER }}
+        run: python scripts/push_signals.py
+      - name: Save Tencent cache snapshot
+        if: always() && steps.scan.outcome != 'cancelled'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/cn500-tencent-qfq
+          key: cc-cn500-tencent-qfq-v4-${{ github.run_id }}
+      - name: Upload diagnostics and cache manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-a-share-${{ github.run_number }}
+          path: |
+            results/a-share/
+            site/data/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Package Pages site
+        if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: scan-and-cache
+    if: needs.scan-and-cache.outputs.has-data == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: cc-pages-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy CC to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
