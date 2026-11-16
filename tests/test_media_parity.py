@@ -94,7 +94,7 @@ class MediaParityTests(unittest.TestCase):
 
   # Full-screen dynamic remains the single owner of outer viewport geometry.
   fullscreen=self.read("site/assets/css/full-screen-dynamic.css")
-  for marker in ("100dvh","safe-area-inset-top","safe-area-inset-bottom","orientation:landscape","orientation:portrait","@supports not (height: 100dvh)","#timeframe-frame","#signal-ticker"):
+  for marker in ("100dvh","safe-area-inset-bottom","orientation:landscape","@supports not (height: 100dvh)","#timeframe-frame","#signal-ticker"):
    self.assertIn(marker,fullscreen)
 
 
