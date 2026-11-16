@@ -1,11 +1,10 @@
 {
-  "source": "MraJJqq/V6",
+  "source": "MraJJqq/Media",
   "colors": {
     "text": "#f2f5ff",
     "card_up": "#00f5a0",
     "card_down": "#ff3b6b",
     "ema12": "#f5d76e",
-    "ema36_ema43": "#BEE9F0",
     "ema144_ema169": "#f4d35e",
     "ema576_ema676": "#ff4e5e",
     "candle_up": "#22b07d",
