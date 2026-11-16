@@ -68,11 +68,12 @@ class MediaParityTests(unittest.TestCase):
   viewport=self.read("site/assets/kline/v6-viewport-state.js")
   for marker in ("pointerdown","pointermove","pointerup","setPointerCapture","setView","destroy"):
    self.assertIn(marker,view)
-  for marker in ("captureViewportState","normalizeViewportState","resolveViewportRight","VIEWPORT_STORAGE_KEY","migrateLegacyViewportKey","vegas-v6-viewport:"):
+  for marker in ("captureViewportState","normalizeViewportState","resolveViewportRight","VIEWPORT_STORAGE_KEY"):
    self.assertIn(marker,viewport)
+  for marker in ("migrateLegacyViewportKey","vegas-v6-viewport:"):
+   self.assertIn(marker,view)
   controller=self.read("site/assets/kline/tencent-kline-controller.js")
   self.assertIn("migrateLegacyViewportKey?.(key)",controller)
-   self.assertIn(marker,viewport)
 
   # Cards: the 500-stock adapter may virtualize DOM nodes, but must retain
   # the Media ring's drag, inertia, selection, pause and lifecycle behavior.

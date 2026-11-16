@@ -24,8 +24,9 @@ class CNFrontendContractTests(unittest.TestCase):
   view=(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8")
   state=(ROOT/"site/assets/kline/v6-viewport-state.js").read_text(encoding="utf-8")
   self.assertIn("cn-kline-viewport-v1",state)
-  self.assertNotIn("vegas-v6-viewport:",view)
-  self.assertNotIn("migrateLegacyViewportKey",self.kline+view)
+  self.assertIn("migrateLegacyViewportKey",view)
+  self.assertIn("vegas-v6-viewport:",view)
+  self.assertNotIn("vegas-v6-viewport:",state)
  def test_legacy_viewport_unit_fallback_is_complete(self):
   for marker in ("max-height:45vh!important","height:clamp(20px,3vh,26px)!important","height:clamp(18px,5vh,23px)!important","calc(100vh - var(--v6-safe-bottom)"):
    self.assertIn(marker,self.media)
