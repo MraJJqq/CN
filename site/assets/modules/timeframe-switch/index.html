@@ -59,38 +59,9 @@ html, body {
 </style>
 </head>
 <body>
-<div class="tf" role="group" aria-label="周期">
+<div class="tf" role="img" aria-label="日线周期">
   <span class="period" aria-current="true">1D</span>
 </div>
-<script>
-(() => {
-  const period = document.querySelector('.tf .period');
-  const valid = '1D';
-  let ready = false;
 
-  const setFromParent = value => {
-    if (value !== valid) return;
-    period.setAttribute('aria-current', 'true');
-  };
-
-  window.addEventListener('message', event => {
-    if (event.origin !== location.origin || event.source !== window.parent) return;
-    const data = event.data;
-    if (!data || typeof data !== 'object' || data.type !== 'VEGAS_TIMEFRAME_SET') return;
-    setFromParent(data.timeframe);
-  });
-
-  const announceReady = () => {
-    if (ready) return;
-    ready = true;
-    setFromParent('1D');
-    window.parent.postMessage({ type: 'VEGAS_TIMEFRAME_READY', timeframe: '1D' }, location.origin);
-  };
-
-  if (document.readyState === 'complete') announceReady();
-  else window.addEventListener('load', announceReady, { once: true });
-  window.addEventListener('pageshow', announceReady);
-})();
-</script>
 </body>
 </html>
