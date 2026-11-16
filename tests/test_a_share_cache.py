@@ -31,6 +31,10 @@ class TradingCalendarTests(unittest.TestCase):
  def test_non_trading_day_uses_previous_session_even_after_close(self):
   now=datetime(2026,11,14,16,30,tzinfo=ZoneInfo("Asia/Shanghai"))
   self.assertEqual(latest_completed_session(date(2026,11,14),now),date(2026,11,13))
+ def test_unpublished_year_fails_closed(self):
+  with patch("scripts.trading_calendar._fetch_exchange_calendar_page",return_value=OFFICIAL_SSE_2026):
+   with self.assertRaisesRegex(RuntimeError,"does not publish 2027"):
+    exchange_closed_days(2027)
  def test_official_exchange_holiday_range_is_parsed(self):
   closed=exchange_closed_days(2026)
   self.assertIn(date(2026,10,1),closed);self.assertIn(date(2026,10,7),closed)

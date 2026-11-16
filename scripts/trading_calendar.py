@@ -43,7 +43,7 @@ def china_today() -> date:
 def _fetch_exchange_calendar_page() -> str:
     response = requests.get(
         SSE_CALENDAR_URL,
-        headers={"User-Agent": "Mozilla/5.0 (compatible; VEGAS-CN/1.0)"},
+        headers={\n            "User-Agent": "Mozilla/5.0 (compatible; VEGAS-CN/1.0)",\n            "Referer": "https://www.sse.com.cn/",\n            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",\n            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5",\n        },
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
