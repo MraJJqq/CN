@@ -1,5 +1,5 @@
-import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-media-parity-20261116-2";
-import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-media-parity-20261116-2";
+import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-residue-cleanup-20261116-1";
+import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-residue-cleanup-20261116-1";
 import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-20261116-1";
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-ema-snapshot-20261116-1";
@@ -11,7 +11,7 @@ const interactionLocks=new Set();let signalTimer=null,klineTimer=null,cardsTimer
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
 const host=$("kline-host"),chart=createV6KlineView({host,onInteractionChange:setInteractionLock});
-const controller=createTencentKlineController({frame:{contentWindow:chart},isHidden,onState:s=>{if(s.status==="request-failed")console.warn("[CN Tencent K-line]",s)}});
+const controller=createTencentKlineController({isHidden,onState:s=>{if(s.status==="request-failed")console.warn("[CN Tencent K-line]",s)}});
 const ticker=createSignalTicker({container:$("signal-ticker"),track:$("signal-track")});
 lifecycle.listen(window,"unhandledrejection",event=>console.error("[VEGAS CN unhandled rejection]",event.reason));
 lifecycle.listen(window,"error",event=>console.error("[VEGAS CN runtime error]",event.message,event.filename,event.lineno));
