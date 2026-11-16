@@ -1,6 +1,6 @@
 # VEGAS CN — A股
 
-CN is the A-share repository. Its seven common display systems and visual assets are based on the Media asset library; its A-share data, scanning, signal, and Bark modules follow the current CC A-share rules, adapted for CN.
+CN is the A-share repository. Its seven common display systems and visual assets are based on the Media asset library; its A-share data, scanning, signal, and Bark modules are independently implemented and run inside CN.
 
 ## Seven systems
 1. K-line renderer and Vegas EMA overlay — Media K-line renderer, connected to Tencent QFQ daily candles.
