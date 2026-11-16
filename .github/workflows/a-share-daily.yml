@@ -45,7 +45,7 @@ jobs:
           path: .cache/cn500-tencent-qfq
           key: cn-cn500-tencent-qfq-v5-${{ github.run_id }}
           restore-keys: |
-            cc-cn500-tencent-qfq-v4-
+            cn-cn500-tencent-qfq-v5-
       - name: Backfill or incrementally update Tencent daily history
         id: scan
         if: steps.calendar.outputs.is-trading-day == 'true'
@@ -67,6 +67,7 @@ jobs:
             echo "::warning::Bark push is disabled: add the repository Actions secret BARK_KEY in Settings > Secrets and variables > Actions."
           fi
       - name: Push CN500 daily signals to Bark
+        id: bark-push
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && steps.bark.outputs.configured == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
         env:
@@ -78,7 +79,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .cache/cn500-tencent-qfq
-          key: cc-cn500-tencent-qfq-v4-${{ github.run_id }}
+          key: cn-cn500-tencent-qfq-v5-${{ github.run_id }}
       - name: Upload diagnostics and cache manifest
         if: always()
         uses: actions/upload-artifact@v4
@@ -94,9 +95,14 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
+      - name: Mark workflow failed when Bark push fails
+        if: steps.bark-push.outcome == 'failure'
+        run: |
+          echo "::error::Bark push failed; Pages data is still deployed, but notification delivery needs attention."
+          exit 1
   deploy:
     needs: scan-and-cache
-    if: needs.scan-and-cache.outputs.has-data == 'true' && github.ref == 'refs/heads/main'
+    if: always() && needs.scan-and-cache.outputs.has-data == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     concurrency:
       group: cn-pages-deploy

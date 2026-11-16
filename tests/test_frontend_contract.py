@@ -17,12 +17,15 @@ class CNFrontendContractTests(unittest.TestCase):
  def test_media_viewport_and_gesture_system_is_present(self):
   self.assertIn("100dvh",self.media);self.assertIn("safe-area-inset-bottom",self.media)
   self.assertIn("pointerdown",(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8"))
+  self.assertIn("createKlineRotationPause",self.app)
+  self.assertIn("rotationPause?.destroy()",self.app)
   self.assertIn("cn-kline-viewport",(ROOT/"site/assets/kline/v6-viewport-state.js").read_text(encoding="utf-8"))
- def test_legacy_viewport_migration_is_connected(self):
-  self.assertIn("migrateLegacyViewportKey?.(nextSymbol)",self.kline)
+ def test_cn_viewport_storage_is_isolated(self):
   view=(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8")
-  self.assertIn("localStorage.removeItem(legacyKey)",view)
-  self.assertIn("if(!legacy)return",view)
+  state=(ROOT/"site/assets/kline/v6-viewport-state.js").read_text(encoding="utf-8")
+  self.assertIn("cn-kline-viewport-v1",state)
+  self.assertNotIn("vegas-v6-viewport:",view)
+  self.assertNotIn("migrateLegacyViewportKey",self.kline+view)
  def test_legacy_viewport_unit_fallback_is_complete(self):
   for marker in ("max-height:45vh!important","height:clamp(20px,3vh,26px)!important","height:clamp(18px,5vh,23px)!important","calc(100vh - var(--v6-safe-bottom)"):
    self.assertIn(marker,self.media)
@@ -33,7 +36,6 @@ class CNFrontendContractTests(unittest.TestCase):
    self.assertNotIn("@supports not(height:100dvh)",source)
   controller=self.kline
   select=controller[controller.index("async function select("):]
-  self.assertLess(select.index("migrateLegacyViewportKey?.(nextSymbol)"),select.index("await read(key)"))
   self.assertLess(select.index("await read(key)"),select.index('render(candles,token,historyComplete,"cache-loaded")'))
   view=(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8")
   self.assertIn("overlay.setView(viewport())",view)
@@ -73,12 +75,28 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("EMA_PERIODS=[12,144,169,576,676]",self.kline_controller)
   self.assertIn('candle["ema"+period]',self.kline_controller)
   self.assertIn("hasSource", (ROOT/"site/assets/kline/v6-vegas-ema.js").read_text(encoding="utf-8"))
-  self.assertIn("MAX_CACHE_SYMBOLS=40",self.kline_controller)
+  self.assertIn("MAX_CACHE_SYMBOLS=64",self.kline_controller)
   self.assertIn("slice(-MAX_CACHED_CANDLES)",self.kline_controller)
   self.assertIn("current.slice(MAX_CACHE_SYMBOLS)",self.kline_controller)
   self.assertIn("schemaVersion===CACHE_SCHEMA",self.kline_controller)
   self.assertIn('"history_complete":len(chart_bars)==x["valid_bars"]',self.scanner)
  def test_no_second_pages_publisher(self):self.assertFalse((ROOT/".github/workflows/pages.yml").exists())
+
+ def test_ema_rules_have_only_the_three_a_share_groups(self):
+  ema=(ROOT/"site/assets/kline/v6-vegas-ema.js").read_text(encoding="utf-8")
+  spec=(ROOT/"Charts/ema-colors.json").read_text(encoding="utf-8")
+  tokens=(ROOT/"UI/visual-tokens.json").read_text(encoding="utf-8")
+  for period in (12,144,169,576,676):self.assertIn("period:"+str(period),ema)
+  self.assertNotIn("period:36",ema);self.assertNotIn("period:43",ema)
+  self.assertNotIn('"EMA36":',spec);self.assertNotIn('"EMA43":',spec)
+  self.assertNotIn("ema36",tokens);self.assertNotIn("ema43",tokens)
+ def test_common_rotation_pause_and_cache_capacity(self):
+  pause=(ROOT/"site/assets/kline/rotation-pause.js").read_text(encoding="utf-8")
+  self.assertIn("lastTapAt",pause);self.assertIn("now-lastTapAt<=320",pause)
+  self.assertIn("createKlineRotationPause",self.app)
+  self.assertIn("rotationPaused",self.app)
+  self.assertIn("MAX_CACHE_SYMBOLS=64",self.kline_controller)
+
 
  def test_tencent_cache_uses_media_resilience_mechanisms(self):
   for marker in ("MEMORY_MAX_PER_SYMBOL=1200","MEMORY_MAX_SYMBOLS=8","mode:\"memory-fallback\"","dbRetryAt=Date.now()+15000","navigator.storage?.estimate","usageRatio:ratio","attempt<3","retryDelay(350*Math.pow(2,attempt)"):

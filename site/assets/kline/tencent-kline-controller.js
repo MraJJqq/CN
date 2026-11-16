@@ -1,6 +1,6 @@
 const DB_NAME="cn-market-cache",DB_VERSION=1,STORE="candles";
 const CACHE_SOURCE="CN Tencent A-share qfq",TIMEFRAME="1D",CACHE_PREFIX="cn-tencent-qfq:";
-const CACHE_SCHEMA=5,MAX_CACHED_CANDLES=1200,MAX_CACHE_SYMBOLS=40;
+const CACHE_SCHEMA=5,MAX_CACHED_CANDLES=1200,MAX_CACHE_SYMBOLS=64;
 const EMA_PERIODS=[12,144,169,576,676];
 const keyOf=symbol=>CACHE_PREFIX+symbol+":"+TIMEFRAME;
 const merge=(...groups)=>{const rows=new Map();for(const group of groups)for(const candle of group||[])rows.set(candle.t,candle);return [...rows.values()].sort((a,b)=>a.t-b.t)};
@@ -155,7 +155,7 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
  async function select(nextSymbol,expectedLastDate=selectedExpectedDate){
   if(destroyed||!nextSymbol)return false;
   selectedExpectedDate=String(expectedLastDate||"");
-  selection++;const token=selection;symbol=nextSymbol;historyComplete=false;frame?.contentWindow?.migrateLegacyViewportKey?.(nextSymbol);
+  selection++;const token=selection;symbol=nextSymbol;historyComplete=false;
   if(activeRequest)activeRequest.abort();
   if(!canWork())return false;
   const key=keyOf(nextSymbol),request=new AbortController();activeRequest=request;inflight.add(request);

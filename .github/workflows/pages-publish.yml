@@ -33,14 +33,14 @@ jobs:
           while read -r run_id run_number; do
             [ -n "$run_id" ] || continue
             rm -rf .cn-data-artifact site/data
-            if ! gh run download "$run_id" --name "cn-a-share-$run_number" --dir .cc-data-artifact; then
+            if ! gh run download "$run_id" --name "cn-a-share-$run_number" --dir .cn-data-artifact; then
               continue
             fi
-            if [ ! -d .cc-data-artifact/site/data ]; then
+            if [ ! -d .cn-data-artifact/site/data ]; then
               continue
             fi
             mkdir -p site
-            cp -a .cc-data-artifact/site/data site/data
+            cp -a .cn-data-artifact/site/data site/data
             if python3 scripts/validate_pages_payload.py; then
               restored=1
               break

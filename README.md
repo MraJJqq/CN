@@ -4,12 +4,16 @@ CN is the A-share repository. Its seven common display systems and visual assets
 
 ## Seven systems
 1. K-line renderer and Vegas EMA overlay — Media K-line renderer, connected to Tencent QFQ daily candles.
-2. Shared viewport and gestures — Media viewport/gesture behavior with a CN-specific persistence namespace.
+2. Shared viewport and gestures — Media pan/pinch/zoom, viewport anchoring and page lifecycle, with a CN-only persistence namespace; double-tap pauses/resumes automatic K-line/Logo rotation.
 3. Rolling market cards — Media card presentation and interaction, populated from the A-share CN500 snapshot and latest-session signals.
 4. Logo and countdown — Media logo module adapted to display the selected A-share name/code and daily interval.
 5. Timeframe selector — Media selector shell, fixed to the A-share daily interval (1D).
 6. Signal feed and bottom ticker — Media ticker presentation, connected to the A-share daily signal payload.
 7. Full-screen dynamic layout — Media viewport/safe-area/orientation system with an A-share panel geometry layer.
+
+## Media parity and A-share adaptations
+
+The shared display behavior is checked against Media commit `601754a7b5033c3380956e2eae7f3efb433ca7d9`. Shared lifecycle modules and card presentation styles are retained; K-line drawing/gesture behavior, responsive layout, logo transitions, ticker animation continuity and card interactions are carried over with A-share-specific adapters. The intentional adaptations are: Tencent daily candles and the five A-share EMA periods; a single 1D selector; 500-stock quote/signal cards; stock name/code and exchange-calendar countdown; and the A-share signal ticker data contract. No Gate market-data or external signal-source dependency is used.
 
 ## A-share data
 - Market universe: the existing CN500 code list.

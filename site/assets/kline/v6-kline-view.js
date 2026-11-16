@@ -4,7 +4,7 @@ export function createV6KlineView({host,onInteractionChange=()=>{}}){
 if(!host)throw new TypeError("K-line host element is required");
 const abort=new AbortController(),{signal}=abort,canvas=document.createElement("canvas");
 canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;background:transparent;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";host.appendChild(canvas);
-let viewportState=null,viewportKeyInitialized=false;try{removeLegacyViewportState(localStorage);viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));viewportKeyInitialized=Boolean(viewportState);}catch(_){}
+let viewportState=null;try{removeLegacyViewportState(localStorage);viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));}catch(_){}
 const ctx=canvas.getContext("2d"),overlayCanvas=document.createElement("canvas");overlayCanvas.setAttribute("aria-hidden","true");overlayCanvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;background:transparent;pointer-events:none";host.appendChild(overlayCanvas);
 const overlay=createVegasEmaOverlay({canvas:overlayCanvas}),T0=10,B=10,MINW=2,MAXW=40,RIGHT_GAP_BARS=.5;
 let C=[],W=0,H=0,dpr=1,barW=viewportState?.barW??9,right=0,lo=0,hi=1,inited=false,vel=0,lastT=0,raf=0,destroyed=false;
@@ -14,7 +14,6 @@ function setRight(v){
  right=clamp(v,0,maxRight);
 }
 function saveViewport(){const next=captureViewportState(C,right,barW);if(!next)return;viewportState=next;try{localStorage.setItem(VIEWPORT_STORAGE_KEY,JSON.stringify(next))}catch(_){}}
-function migrateLegacyViewportKey(key){if(viewportKeyInitialized||typeof key!=="string"||!key)return;const legacyKey="vegas-v6-viewport:"+key;try{const legacy=normalizeViewportState(JSON.parse(localStorage.getItem(legacyKey)||"null"));if(!legacy)return;viewportState=legacy;viewportKeyInitialized=true;localStorage.setItem(VIEWPORT_STORAGE_KEY,JSON.stringify(legacy));localStorage.removeItem(legacyKey);}catch(_){}}
 function ask(){if(!raf&&!destroyed)raf=requestAnimationFrame(loop)}
 function resize(){if(destroyed)return;if(P.size||pinch)resetInteraction();dpr=Math.min(window.devicePixelRatio||1,2);const r=host.getBoundingClientRect();W=r.width;H=r.height;setRight(right);canvas.width=Math.max(1,Math.round(W*dpr));canvas.height=Math.max(1,Math.round(H*dpr));ask()}
 function yOf(p){return T0+(Math.log(hi)-Math.log(p))/(Math.log(hi)-Math.log(lo))*(H-T0-B)}
@@ -45,13 +44,13 @@ canvas.addEventListener("touchmove",e=>e.preventDefault(),{passive:false,signal}
 const observer=new ResizeObserver(resize);observer.observe(host);window.addEventListener("pagehide",()=>{resetInteraction();saveViewport()},{signal});window.addEventListener("pageshow",resetInteraction,{signal});window.addEventListener("blur",resetInteraction,{signal});document.addEventListener("visibilitychange",()=>{if(document.hidden){resetInteraction();saveViewport()}else resetInteraction()},{signal});resize();
 function setCandles(a){C=Array.isArray(a)?a:[];inited=false;vel=0;if(!C.length){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);overlay.setCandles([]);host.dataset.emaHistoryStatus="empty";host.dataset.emaHistorySymbol="";host.dataset.emaHistoryCount="0";host.dataset.emaAvailablePeriods="";ask();return;}if(viewportState){barW=viewportState.barW;const mapped=resolveViewportRight(C,viewportState,W);if(mapped!==null)right=mapped;else setRight(C.length-1+RIGHT_GAP_BARS);}else{setRight(C.length-1+RIGHT_GAP_BARS);saveViewport();}setRight(right);ask();}
 function setVegasEmaCandles(a){overlay.setCandles(Array.isArray(a)?a:[])}
-function setHistoryStatus(symbol,count,complete,state,error,timeframe="4H"){
+function setHistoryStatus(symbol,count,complete,state,error,timeframe="1D"){
  const status=state||(complete?(count>=676?"ready":"exchange-history-exhausted"):"incomplete");
  host.dataset.emaHistoryStatus=status;host.dataset.emaHistorySymbol=symbol;host.dataset.emaHistoryCount=String(count);
  host.dataset.emaAvailablePeriods=[12,144,169,576,676].filter(period=>count>=period).join(",");
  if(status==="exchange-history-exhausted")console.warn("[VEGAS CN] "+symbol+" exchange history exhausted at "+count+" "+timeframe+" candles; available EMA periods: "+host.dataset.emaAvailablePeriods);
- if(status==="request-failed")console.warn("[VEGAS V6] "+symbol+" history request failed; retained "+count+" cached/latest "+timeframe+" candles.",error||"");
+ if(status==="request-failed")console.warn("[CN Tencent] "+symbol+" history request failed; retained "+count+" cached/latest "+timeframe+" candles.",error||"");
 }
 function destroy(){if(destroyed)return;resetInteraction();destroyed=true;abort.abort();observer.disconnect();if(raf)cancelAnimationFrame(raf);overlay.destroy();canvas.remove();overlayCanvas.remove();C=[]}
-host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,migrateLegacyViewportKey,destroy})
+host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,destroy})
 }

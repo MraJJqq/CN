@@ -134,6 +134,10 @@ class WorkflowReliabilityTests(unittest.TestCase):
   self.assertIn("Check Bark credentials",scan)
   self.assertIn("steps.bark.outputs.configured == 'true'",scan)
   self.assertIn("continue-on-error: true",scan)
+  self.assertIn("steps.bark-push.outcome == 'failure'",scan)
+  self.assertIn("if: always() && needs.scan-and-cache.outputs.has-data",scan)
+  self.assertIn("rm -rf .cn-data-artifact site/data",publish)
+  self.assertNotIn("rm -rf .cc-data-artifact",publish)
   self.assertIn("cancel-in-progress: false",scan)
   self.assertIn("cancel-in-progress: false",publish)
  def test_bark_only_runs_after_payload_validation(self):

@@ -1,12 +1,13 @@
-import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-ema-snapshot-20261116-1";
-import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-ema-snapshot-20261116-1";
+import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-common-systems-20261116-1";
+import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-common-systems-20261116-1";
 import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-20261116-1";
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-ema-snapshot-20261116-1";
+import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
 let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null;
-const interactionLocks=new Set();let signalTimer=null,klineTimer=null,cardsTimer=null;
+const interactionLocks=new Set();let signalTimer=null,klineTimer=null,cardsTimer=null,rotationPaused=false,rotationPause=null;
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
 const host=$("kline-host"),chart=createV6KlineView({host,onInteractionChange:setInteractionLock});
@@ -55,6 +56,8 @@ function clearSelectedStock(){sendLogo(null);chart.setCandles([]);chart.setVegas
 function stopCarousel(){if(carouselTimer!==null)clearTimeout(carouselTimer);if(transitionTimer!==null)clearTimeout(transitionTimer);carouselTimer=transitionTimer=null;transitionToken++;$("app").classList.remove("is-symbol-transitioning")}
 function waitTransition(ms,token){return new Promise(resolve=>{transitionTimer=setTimeout(()=>{transitionTimer=null;resolve(token===transitionToken)},ms)})}
 function setInteractionLock(source,active){if(destroyed)return;if(active){interactionLocks.add(source);stopCarousel();return}interactionLocks.delete(source);if(!interactionLocks.size&&!isHidden()&&signalStocks.length)scheduleNext()}
+function setUserRotationPaused(paused){if(rotationPaused===paused)return;rotationPaused=paused;if(paused){if(carouselTimer!==null)clearTimeout(carouselTimer);carouselTimer=null;return}if(!isHidden()&&!interactionLocks.size&&transitionTimer===null&&!$("app").classList.contains("is-symbol-transitioning"))scheduleNext()}
+rotationPause=createKlineRotationPause({target:host,onToggle:()=>setUserRotationPaused(!rotationPaused)});
 async function transitionToIndex(index,{initial=false}={}){
  if(destroyed||isHidden()||(!initial&&interactionLocks.size)||!signalStocks.length)return;
  if(carouselTimer!==null)clearTimeout(carouselTimer);carouselTimer=null;if(transitionTimer!==null)clearTimeout(transitionTimer);transitionTimer=null;
@@ -86,7 +89,7 @@ async function refreshCards({force=false}={}){
   return true;
  }catch(error){if(!destroyed)console.warn("[CN] card snapshot refresh failed",error);return false}
 }
-function scheduleNext(){if(destroyed||isHidden()||interactionLocks.size||signalStocks.length<2)return;if(carouselTimer!==null)clearTimeout(carouselTimer);carouselTimer=setTimeout(()=>{carouselTimer=null;void transitionToIndex(carouselIndex+1)},7000)}
+function scheduleNext(){if(destroyed||isHidden()||rotationPaused||interactionLocks.size||signalStocks.length<2)return;if(carouselTimer!==null)clearTimeout(carouselTimer);carouselTimer=setTimeout(()=>{carouselTimer=null;void transitionToIndex(carouselIndex+1)},7000)}
 function startCarousel(index=0){stopCarousel();void transitionToIndex(index,{initial:true})}
 async function refreshSignals(){
  if(destroyed)return null;
@@ -116,7 +119,7 @@ function startForegroundTimers(){
 }
 function suspendRuntime(){if(destroyed)return;document.documentElement.classList.add("page-hidden");stopCarousel();stopForegroundTimers();interactionLocks.clear();controller.suspend();ticker.setPaused(true)}
 function resumeRuntime(){if(destroyed||isHidden())return;document.documentElement.classList.remove("page-hidden");controller.resume();ticker.setPaused(false);startForegroundTimers();void refreshCards({force:true});if(signalStocks.length&&!interactionLocks.size)scheduleNext()}
-function teardown(){if(destroyed)return;destroyed=true;signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;stopCarousel();stopForegroundTimers();interactionLocks.clear();pageLifecycle?.destroy();controller.destroy();chart.destroy();ticker.destroy();lifecycle.destroy()}
+function teardown(){if(destroyed)return;destroyed=true;signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;stopCarousel();stopForegroundTimers();interactionLocks.clear();pageLifecycle?.destroy();rotationPause?.destroy();controller.destroy();chart.destroy();ticker.destroy();lifecycle.destroy()}
 pageLifecycle=createPageLifecycle({documentRef:document,windowRef:window,onSuspend:suspendRuntime,onResume:resumeRuntime,onPageHideFinal:teardown});
 document.documentElement.classList.toggle("page-hidden",isHidden());
 lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready");syncFrames()});lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready");syncFrames()});revealFrame(logoFrame);revealFrame(timeframeFrame);
