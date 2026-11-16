@@ -1,4 +1,4 @@
-/* Media V6 timeframe iframe: preserve the wheel and restrict hit-testing to its visible lower strip. */
+/* Fixed A-share 1D label: preserve its clipped display strip without intercepting K-line gestures. */
 #timeframe-frame{
  z-index:2147483647!important;
  display:block!important;
@@ -13,7 +13,7 @@
  clip-path:inset(68.83% 0 0 0);
  -webkit-clip-path:inset(68.83% 0 0 0);
  isolation:isolate;
- pointer-events:auto!important;
+ pointer-events:none!important;
 }
 #app #timeframe-frame{
  height:calc(100vh - var(--v6-safe-bottom, 0px))!important;
