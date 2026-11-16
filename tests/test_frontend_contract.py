@@ -24,9 +24,10 @@ class CNFrontendContractTests(unittest.TestCase):
   view=(ROOT/"site/assets/kline/v6-kline-view.js").read_text(encoding="utf-8")
   state=(ROOT/"site/assets/kline/v6-viewport-state.js").read_text(encoding="utf-8")
   self.assertIn("cn-kline-viewport-v1",state)
-  self.assertIn("migrateLegacyViewportKey",view)
-  self.assertIn("vegas-v6-viewport:",view)
+  self.assertNotIn("migrateLegacyViewportKey",view)
+  self.assertNotIn("vegas-v6-viewport:",view)
   self.assertNotIn("vegas-v6-viewport:",state)
+  self.assertNotIn("removeLegacyViewportState",state)
  def test_legacy_viewport_unit_fallback_is_complete(self):
   for marker in ("max-height:45vh!important","height:clamp(20px,3vh,26px)!important","height:clamp(18px,5vh,23px)!important","calc(100vh - var(--v6-safe-bottom)"):
    self.assertIn(marker,self.media)
@@ -44,7 +45,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("stock_zh_a_hist_tx",self.scanner);self.assertIn("Tencent qt.gtimg.cn",self.scanner)
   self.assertIn('TIMEFRAME="1D"',self.kline);self.assertIn('DB_NAME="cn-market-cache"',self.kline)
  def test_daily_timeframe_and_logo_linkage(self):
-  self.assertIn(">1D<",self.tf);self.assertIn("const valid = ['1D']",self.tf);self.assertIn('timeframe:"1D"',self.app)
+  self.assertIn('<span class="period" aria-current="true">1D</span>',self.tf);self.assertIn("const valid = '1D'",self.tf);self.assertIn('timeframe:"1D"',self.app)
   self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.logo);self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.app)
  def test_cards_and_signal_flow(self):
   self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("No change",self.ticker)
@@ -63,7 +64,11 @@ class CNFrontendContractTests(unittest.TestCase):
  def test_fullscreen_rules_are_centralized(self):
   self.assertNotIn("full-screen-dynamic.css",self.tf)
   self.assertNotIn("responsive.css",self.index)
-  self.assertIn("scroll-snap-type: y mandatory",self.tf)
+  self.assertNotIn("scroll-snap",self.tf)
+  self.assertNotIn("VEGAS_TIMEFRAME_SELECT",self.tf)
+  self.assertNotIn("button",self.tf)
+  self.assertNotIn("VEGAS_TIMEFRAME_SELECT",self.app)
+  self.assertIn("pointer-events:none!important",self.tf_host)
   self.assertIn("clip-path:inset(68.83% 0 0 0)",self.tf_host)
   self.assertIn("height:calc(100vh - var(--v6-safe-bottom, 0px))!important",self.tf_host)
   self.assertIn("100dvh",self.media)
@@ -112,7 +117,7 @@ class CNFrontendContractTests(unittest.TestCase):
    self.assertNotIn("cn-viewport-20261110-1",content)
    self.assertIn("cn-batch-20261116-1",content)
   self.assertIn("?v=cn-ema-snapshot-20261116-1",self.app)
-  self.assertIn("?v=cn-ema-snapshot-20261116-1",view)
+  self.assertIn("?v=cn-viewport-isolated-20261116-1",view)
  def test_cards_share_one_initial_snapshot_request(self):
   cards=(ROOT/"site/assets/rolling-cards.js").read_text(encoding="utf-8")
   self.assertIn("__CN_CARD_DATA_READY__=fetch(\"./data/cards.json\"",cards)
