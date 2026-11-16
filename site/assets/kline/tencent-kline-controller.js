@@ -196,7 +196,7 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
   paused=true;
   for(const request of inflight)request.abort("page-hidden");
  }
- function resume(){if(destroyed||isHidden())return;paused=false;if(symbol)void select(symbol,selectedExpectedDate)}
+ function resume({refresh=true,nextSymbol=symbol,expectedLastDate=selectedExpectedDate}={}){if(destroyed||isHidden())return Promise.resolve(false);paused=false;return refresh&&nextSymbol?select(nextSymbol,expectedLastDate):Promise.resolve(false)}
  function destroy(){
   if(destroyed)return;destroyed=true;paused=true;selection++;
   for(const request of inflight)request.abort("controller-destroyed");
