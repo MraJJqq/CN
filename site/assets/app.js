@@ -153,7 +153,7 @@ lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-rea
 lifecycle.listen(window,"vegas-cards-ready",()=>{void refreshCards();if(typeof window.setCardOrder==="function"&&window.setCardOrder(signalStocks.map(x=>x.symbol)))$("rolling-cards-frame").classList.add("is-ready")});
 lifecycle.listen(window,"message",event=>{
  if(event.origin!==location.origin)return;
- if(event.source===timeframeFrame?.contentWindow){if(event.data?.type==="VEGAS_TIMEFRAME_SELECT"||event.data?.type==="VEGAS_TIMEFRAME_READY")sendTimeframe();return}
+ if(event.source===timeframeFrame?.contentWindow){if(event.data?.type==="VEGAS_TIMEFRAME_READY")sendTimeframe();return}
  if(event.source===logoFrame?.contentWindow&&event.data?.type==="VEGAS_LOGO_READY"){if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();sendTimeframe()}else syncFrames();return}
  if(event.source!==window)return;
  if(event.data?.type==="VEGAS_CARD_INTERACTION"&&typeof event.data.active==="boolean"){setInteractionLock("rolling-cards",event.data.active);return}
