@@ -13,7 +13,6 @@
 }
 :root {
   --ink: #e8f0ff;
-  --mute: #7f8db0;
   --up: #2ee6a6;
   color-scheme: dark;
 }
@@ -38,53 +37,41 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 0;
-  perspective: 700px;
   overflow: hidden;
-  overscroll-behavior: contain;
-  touch-action: manipulation;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20.833%, #000 79.167%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 20.833%, #000 79.167%, transparent 100%);
 }
-.tf button {
+.tf .period {
   border: 0;
   background: none;
   padding: 0 clamp(4px, 1vw, 8px);
   width: auto;
-  height: 100%;
+  display: block;
+  height: auto;
   min-height: 0;
-  flex: 0 0 100%;
-  scroll-snap-align: center;
   font: 700 clamp(28px, 4.3vh, 44px)/1.05 'Chakra Petch', sans-serif;
   color: var(--ink);
   cursor: default;
-  transform-style: preserve-3d;
   -webkit-tap-highlight-color: transparent;
-  transform: translateZ(24px);
   filter:
     drop-shadow(0 0 12px rgba(46,230,166,.7))
     drop-shadow(0 10px 14px rgba(0,0,0,.6));
-}
-.tf button:focus-visible {
-  outline: 2px solid var(--up);
-  outline-offset: 2px;
-  border-radius: 8px;
 }
 </style>
 </head>
 <body>
 <div class="tf" role="group" aria-label="周期">
-  <button aria-pressed="true" type="button">1D</button>
+  <span class="period" aria-current="true">1D</span>
 </div>
 <script>
 (() => {
-  const tf = document.querySelector('.tf');
-  const button = tf.querySelector('button');
+  const period = document.querySelector('.tf .period');
   const valid = '1D';
   let ready = false;
 
   const setFromParent = value => {
     if (value !== valid) return;
-    button.setAttribute('aria-pressed', 'true');
+    period.setAttribute('aria-current', 'true');
   };
 
   window.addEventListener('message', event => {
