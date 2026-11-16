@@ -51,7 +51,7 @@ try{
    const visit=rules=>{for(const rule of rules){if(rule.type===12&&/not\s*\(\s*height\s*:\s*100dvh\s*\)/i.test(rule.conditionText||""))return true;if(rule.cssRules&&visit(rule.cssRules))return true;}return false};
    return [...doc.styleSheets].some(sheet=>{try{return visit(sheet.cssRules)}catch(_){return false}});
   };
-  const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),period=frame.contentDocument.querySelector(".tf .period"),periodStyle=period?getComputedStyle(period):null,periodContainer=frame.contentDocument.querySelector(".tf"),periodContainerStyle=periodContainer?getComputedStyle(periodContainer):null;
+  const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),period=frame.contentDocument.querySelector(".tf .period"),periodContainer=frame.contentDocument.querySelector(".tf"),periodContainerStyle=periodContainer?getComputedStyle(periodContainer):null;
   const safeBottom=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--v6-safe-bottom"))||0,frameRect=frame.getBoundingClientRect();
   const frameFallback=frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%");
   const singlePeriodReady=Boolean(period&&period.textContent.trim()==="1D"&&frame.contentDocument.querySelectorAll(".tf .period").length===1&&frame.contentDocument.querySelectorAll(".tf button").length===0&&periodContainer&&periodContainer.scrollHeight<=periodContainer.clientHeight&&periodContainerStyle.scrollSnapType==="none"&&frameStyle.pointerEvents==="none");
