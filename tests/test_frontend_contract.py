@@ -132,5 +132,12 @@ class CNFrontendContractTests(unittest.TestCase):
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
   self.assertIn("if(dbp)dbp.then(db=>db?.close()).catch(()=>{});",self.kline_controller)
 
+ def test_timeframe_font_path_resolves_to_shared_media_font(self):
+  module=ROOT/"site/assets/modules/timeframe-switch"
+  self.assertIn("url('../../fonts/ChakraPetch-Bold.ttf')",self.tf)
+  self.assertTrue((module/"../../fonts/ChakraPetch-Bold.ttf").resolve().is_file())
+  self.assertNotIn("../../assets/fonts/ChakraPetch-Bold.ttf",self.tf)
+  self.assertIn("cn-timeframe-static-20261116-4",self.index)
+
 
 if __name__=="__main__":unittest.main()

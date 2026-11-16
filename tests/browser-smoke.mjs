@@ -55,6 +55,13 @@ try{
   const safeBottom=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--v6-safe-bottom"))||0,frameRect=frame.getBoundingClientRect();
   const frameFallback=frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%");
   const singlePeriodReady=Boolean(period&&period.textContent.trim()==="1D"&&frame.contentDocument.querySelectorAll(".tf .period").length===1&&frame.contentDocument.querySelectorAll(".tf button").length===0&&periodContainer&&periodContainer.scrollHeight<=periodContainer.clientHeight&&periodContainerStyle.scrollSnapType==="none"&&frameStyle.pointerEvents==="none");
+  const fontUrl=new URL("../../fonts/ChakraPetch-Bold.ttf",frame.contentWindow.location.href),fontResponse=await fetch(fontUrl);
+  if(!fontResponse.ok)throw new Error("Timeframe Chakra Petch font request failed: "+fontUrl.pathname);
+  await frame.contentDocument.fonts.load('700 28px "Chakra Petch"');
+  const timeframeFontLoaded=frame.contentDocument.fonts.check('700 28px "Chakra Petch"');
+  const logoDocument=document.querySelector("#logo-frame").contentDocument;
+  await logoDocument.fonts.load('700 12px "Chakra Petch"');
+  const logoFontLoaded=logoDocument.fonts.check('700 12px "Chakra Petch"');
   const read=()=>JSON.parse(localStorage.getItem(key)||"null");
   const send=(type,id,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:"touch",clientX:x,clientY:y,button:0,buttons:type==="pointerup"||type==="pointercancel"?0:1}));
   const rect=canvas.getBoundingClientRect(),cx=rect.left+rect.width*.55,cy=rect.top+rect.height*.5;
@@ -67,11 +74,11 @@ try{
   send("pointermove",73,cx+100,cy);send("pointerup",73,cx+100,cy);send("pointerup",72,cx-45,cy);
   const pinched=read();
   send("pointerdown",74,cx,cy);send("pointercancel",74,cx,cy);
-  return {mainFallback,frameFallback,singlePeriodReady,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
+  return {mainFallback,frameFallback,singlePeriodReady,timeframeFontLoaded,logoFontLoaded,fontPath:fontUrl.pathname,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
  });
- if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback||!viewportInteraction.singlePeriodReady)throw new Error("Fullscreen fallback or residue-free static 1D period contract failed: "+JSON.stringify(viewportInteraction));
+ if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback||!viewportInteraction.singlePeriodReady||!viewportInteraction.timeframeFontLoaded||!viewportInteraction.logoFontLoaded)throw new Error("Fullscreen fallback or residue-free static 1D period contract failed: "+JSON.stringify(viewportInteraction));
  if(!viewportInteraction.dragChanged||!viewportInteraction.pinchChanged)throw new Error("K-line drag/pinch interaction contract failed: "+JSON.stringify(viewportInteraction));
- console.log("CN viewport interaction and static 1D display:",JSON.stringify(viewportInteraction));
+ console.log("CN viewport interaction, static 1D display and Media fonts:",JSON.stringify(viewportInteraction));
  if(errors.length)throw new Error(errors.join(" | "));
  for(let pass=1;pass<=2;pass++){
   await page.reload({waitUntil:"domcontentloaded"});
