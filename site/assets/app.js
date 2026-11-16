@@ -146,8 +146,8 @@ async function resumeRuntime(){
 function teardown(){if(destroyed)return;destroyed=true;signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;stopCarousel();stopForegroundTimers();interactionLocks.clear();pageLifecycle?.destroy();rotationPause?.destroy();controller.destroy();chart.destroy();ticker.destroy();lifecycle.destroy()}
 pageLifecycle=createPageLifecycle({documentRef:document,windowRef:window,onSuspend:suspendRuntime,onResume:resumeRuntime,onPageHideFinal:teardown});
 document.documentElement.classList.toggle("page-hidden",isHidden());
-lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready");if($("app").classList.contains("is-symbol-transitioning"))sendLogoTransitionStart();else syncFrames()});
-lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready")});
+lifecycle.listen(logoFrame,"load",()=>{if($("app").classList.contains("is-symbol-transitioning"))sendLogoTransitionStart();else syncFrames()});
+if(logoFrame.contentDocument?.readyState==="complete")syncFrames();
 lifecycle.listen(window,"vegas-cards-ready",()=>{void refreshCards();if(typeof window.setCardOrder==="function"&&window.setCardOrder(signalStocks.map(x=>x.symbol)))$("rolling-cards-frame").classList.add("is-ready")});
 lifecycle.listen(window,"message",event=>{
  if(event.origin!==location.origin)return;

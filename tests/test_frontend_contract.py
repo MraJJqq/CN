@@ -146,8 +146,10 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('html,body{background:#101010',self.module_css)
   self.assertNotIn("function revealFrame(",self.app)
   self.assertNotIn("revealFrame(logoFrame)",self.app)
-  self.assertIn('lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready")',self.app)
-  self.assertIn('lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready")',self.app)
+  self.assertIn("onload=\"this.classList.add('is-ready')\"",self.index)
+  self.assertIn('lifecycle.listen(logoFrame,"load",()=>{if(',self.app)
+  self.assertIn('if(logoFrame.contentDocument?.readyState==="complete")syncFrames()',self.app)
+  self.assertNotIn('lifecycle.listen(timeframeFrame,"load"',self.app)
 
 
 if __name__=="__main__":unittest.main()

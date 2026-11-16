@@ -17,8 +17,8 @@
 <body>
 <main id="app">
  <section id="kline-host" aria-label="A股日线K线"></section>
- <iframe id="logo-frame" src="./assets/modules/logo/logo.html?v=cn-common-systems-20261116-2" title="VEGAS Logo 与股票信息" loading="eager" allowtransparency="true"></iframe>
- <iframe id="timeframe-frame" src="./assets/modules/timeframe-switch/index.html?v=cn-timeframe-static-20261116-4" title="A股日线周期" loading="eager" allowtransparency="true"></iframe>
+ <iframe id="logo-frame" src="./assets/modules/logo/logo.html?v=cn-common-systems-20261116-2" title="VEGAS Logo 与股票信息" loading="eager" allowtransparency="true" onload="this.classList.add('is-ready')"></iframe>
+ <iframe id="timeframe-frame" src="./assets/modules/timeframe-switch/index.html?v=cn-timeframe-static-20261116-4" title="A股日线周期" loading="eager" allowtransparency="true" onload="this.classList.add('is-ready')"></iframe>
  <div id="rolling-cards-frame" aria-label="A股信号卡片滚动"><div id="ring"><div id="vp"></div></div></div>
  <section id="signal-ticker" aria-label="A股正式信号底部滚动"><div id="signal-track"></div></section>
 </main>
