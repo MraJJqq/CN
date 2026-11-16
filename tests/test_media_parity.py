@@ -40,7 +40,7 @@ class MediaParityTests(unittest.TestCase):
   self.assertIn('lifecycle.listen(window,"unhandledrejection"',app)
   self.assertIn("signalRefreshController?.abort()",app)
   self.assertIn("if(destroyed||isHidden())return null;",app)
-  self.assertIn('if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart()}else syncFrames()',app)
+  self.assertIn('if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();}else syncFrames()',app)
   self.assertIn("function resume({refresh=true,nextSymbol=symbol",self.read("site/assets/kline/tencent-kline-controller.js"))
  def test_card_rotation_matches_media_baseline(self):
   cn=self.read("site/assets/rolling-cards.js")
@@ -86,7 +86,7 @@ class MediaParityTests(unittest.TestCase):
   for marker in ("VEGAS_LOGO_TRANSITION_START","VEGAS_LOGO_TRANSITION_CANCEL","VEGAS_LOGO_SET_SYMBOL","startPreparedTransition","cancelPreparedTransition","1500","refreshCalendar","nextTradingClose","scheduleClock","stopClock","pagehide","pageshow"):
    self.assertIn(marker,logo)
 
-  # Fixed 1D is the A-share adapter; the isolated iframe message contract remains.
+  # Fixed 1D is a static A-share label; no scrolling or message protocol remains.
   timeframe=self.read("site/assets/modules/timeframe-switch/index.html")
   self.assertIn('<span class="period">1D</span>',timeframe)
   for marker in ("scroll-snap","VEGAS_TIMEFRAME_SELECT","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_READY","cloneNode","<button","<script>"):
