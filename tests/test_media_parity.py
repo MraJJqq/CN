@@ -88,7 +88,7 @@ class MediaParityTests(unittest.TestCase):
 
   # Fixed 1D is the A-share adapter; the isolated iframe message contract remains.
   timeframe=self.read("site/assets/modules/timeframe-switch/index.html")
-  self.assertIn('<span class="period" aria-current="true">1D</span>',timeframe)
+  self.assertIn('<span class="period">1D</span>',timeframe)
   for marker in ("scroll-snap","VEGAS_TIMEFRAME_SELECT","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_READY","cloneNode","<button","<script>"):
    self.assertNotIn(marker,timeframe)
 
