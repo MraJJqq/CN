@@ -23,8 +23,8 @@ jobs:
     outputs:
       has-data: ${{ steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -40,7 +40,7 @@ jobs:
         id: calendar
         run: python scripts/trading_calendar.py --write site/data/trading-calendar.json --github-output "$GITHUB_OUTPUT"
       - name: Restore Tencent CN500 cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .cache/cn500-tencent-qfq
           key: cn-cn500-tencent-qfq-v5-${{ github.run_id }}
@@ -76,13 +76,13 @@ jobs:
         run: python scripts/push_signals.py
       - name: Save Tencent cache snapshot
         if: always() && steps.scan.outcome != 'cancelled'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .cache/cn500-tencent-qfq
           key: cn-cn500-tencent-qfq-v5-${{ github.run_id }}
       - name: Upload diagnostics and cache manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cn-a-share-${{ github.run_number }}
           path: |
@@ -92,7 +92,7 @@ jobs:
           retention-days: 90
       - name: Package Pages site
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - name: Mark workflow failed when Bark push fails
@@ -115,7 +115,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Deploy CN to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
