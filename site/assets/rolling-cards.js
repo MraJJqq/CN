@@ -146,7 +146,7 @@ ring.addEventListener("pointermove",function(e){
   if(e.pointerId!==pid)return;
   if(!drag){
     if(Math.abs(e.clientX-sx)<SLOP)return;                 // 轻点不打断运动
-    drag=true;window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:true},"https://mrajjqq.github.io");tapSymbol=null;vel=0;sn=0;lx=cx=e.clientX;wake();return;
+    drag=true;window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:true},location.origin);tapSymbol=null;vel=0;sn=0;lx=cx=e.clientX;wake();return;
   }
   cx=e.clientX;
 });
@@ -154,11 +154,11 @@ function end(e){
   if(e.pointerId!==pid)return;
   pid=-1;
   if(drag){
-    drag=false;window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:false},"https://mrajjqq.github.io");pos+=(cx-lx)/Rx;
+    drag=false;window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:false},location.origin);pos+=(cx-lx)/Rx;
     var v=fling(performance.now());vel=v>FLING_MAX?FLING_MAX:v<-FLING_MAX?-FLING_MAX:v;
     setDir();if(paused&&(vel>.3||vel<-.3))paused=false;
   }else if(e.type==="pointerup"){                          // 卡片点按选择；双击仍暂停 / 继续
-    if(tapSymbol)window.parent.postMessage({type:"VEGAS_CARD_SELECT",symbol:tapSymbol},"https://mrajjqq.github.io");
+    if(tapSymbol)window.parent.postMessage({type:"VEGAS_CARD_SELECT",symbol:tapSymbol},location.origin);
     var t=performance.now();
     if(t-lastTap<320){paused=!paused;lastTap=0}else lastTap=t;
   }
@@ -184,7 +184,7 @@ var lr=0;
 function relayout(){lr=0;layout();wake()}
 if("ResizeObserver" in window){resizeObserver=new ResizeObserver(function(){if(!lr)lr=requestAnimationFrame(relayout)});resizeObserver.observe(vp)}
 else{resizeFallback=function(){if(!lr)lr=requestAnimationFrame(relayout)};addEventListener("resize",resizeFallback)}
-function releaseDrag(){if(pid!==-1&&drag)window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:false},"https://mrajjqq.github.io");pid=-1;drag=false;tapSymbol=null;sn=0;vel=0}
+function releaseDrag(){if(pid!==-1&&drag)window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:false},location.origin);pid=-1;drag=false;tapSymbol=null;sn=0;vel=0}
 window.addEventListener("pagehide",function(e){stop();releaseDrag();if(!e.persisted){intersectionObserver?.disconnect();resizeObserver?.disconnect();if(resizeFallback)removeEventListener("resize",resizeFallback);if(lr)cancelAnimationFrame(lr);lr=0}});
 window.addEventListener("pageshow",function(){if(!document.hidden)wake()});
 
@@ -220,7 +220,7 @@ window.setCardOrder=function(symbols){
   return true;
 };
 window.addEventListener("message",function(event){
-  if(event.origin!=="https://mrajjqq.github.io"||event.source!==window.parent)return;
+  if(event.origin!==location.origin||event.source!==window.parent)return;
   if(event.data?.type==="VEGAS_SET_CARD_ORDER")window.setCardOrder(event.data.symbols);
 });
 
