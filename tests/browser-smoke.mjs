@@ -52,7 +52,8 @@ try{
    return [...doc.styleSheets].some(sheet=>{try{return visit(sheet.cssRules)}catch(_){return false}});
   };
   const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),wheel=frame.contentDocument.querySelector(".tf"),wheelStyle=wheel?getComputedStyle(wheel):null;
-  const frameFallback=frame.clientHeight>=innerHeight-2&&frameStyle.clipPath.includes("68.83%");
+  const safeBottom=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--v6-safe-bottom"))||0,frameRect=frame.getBoundingClientRect();
+  const frameFallback=frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%");
   const wheelReady=Boolean(wheel&&wheelStyle.scrollSnapType.includes("y")&&wheel.querySelectorAll("button").length===5&&[...wheel.querySelectorAll("button")].every(b=>b.textContent.trim()==="1D"));
   const read=()=>JSON.parse(localStorage.getItem(key)||"null");
   const send=(type,id,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:"touch",clientX:x,clientY:y,button:0,buttons:type==="pointerup"||type==="pointercancel"?0:1}));
