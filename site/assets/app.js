@@ -46,7 +46,6 @@ function persistSignalSnapshot(snapshot){
  catch(error){console.warn("[CN] daily signal snapshot could not be persisted",error)}
 }
 function sendFrame(frame,payload){try{frame?.contentWindow?.postMessage(payload,location.origin)}catch(_){}}
-function sendTimeframe(){sendFrame(timeframeFrame,{type:"VEGAS_TIMEFRAME_SET",timeframe:"1D"})}
 function sendLogoTransitionStart(){sendFrame(logoFrame,{type:"VEGAS_LOGO_TRANSITION_START"})}
 function cancelLogoTransition(){sendFrame(logoFrame,{type:"VEGAS_LOGO_TRANSITION_CANCEL"})}
 function sendLogo(item,market){
@@ -54,7 +53,7 @@ function sendLogo(item,market){
  const code=String(item.code||item.symbol||"").replace(/^(SH|SZ|BJ)/,"");
  sendFrame(logoFrame,{type:"VEGAS_LOGO_SET_SYMBOL",symbol:String(item.symbol||code),name:String(item.name||market?.name||code),code,timeframe:"1D"});
 }
-function syncFrames(){sendTimeframe();const item=signalStocks[carouselIndex];sendLogo(item||null,item?universe.find(s=>s.symbol===item.symbol):null)}
+function syncFrames(){const item=signalStocks[carouselIndex];sendLogo(item||null,item?universe.find(s=>s.symbol===item.symbol):null)}
 function revealFrame(frame){if(frame?.contentWindow?.document?.readyState==="complete")frame.classList.add("is-ready")}
 function clearSelectedStock(){sendLogo(null);chart.setCandles([]);chart.setVegasEmaCandles([])}
 function stopCarousel(){if(carouselTimer!==null)clearTimeout(carouselTimer);if(transitionTimer!==null)clearTimeout(transitionTimer);carouselTimer=transitionTimer=null;transitionToken++;cancelLogoTransition();$("app").classList.remove("is-symbol-transitioning")}
@@ -117,7 +116,7 @@ async function refreshSignals(){
 }
 async function boot(){
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
- sendTimeframe();
+ 
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
  try{await refreshSignals()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
  if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;
@@ -148,13 +147,12 @@ async function resumeRuntime(){
 function teardown(){if(destroyed)return;destroyed=true;signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;stopCarousel();stopForegroundTimers();interactionLocks.clear();pageLifecycle?.destroy();rotationPause?.destroy();controller.destroy();chart.destroy();ticker.destroy();lifecycle.destroy()}
 pageLifecycle=createPageLifecycle({documentRef:document,windowRef:window,onSuspend:suspendRuntime,onResume:resumeRuntime,onPageHideFinal:teardown});
 document.documentElement.classList.toggle("page-hidden",isHidden());
-lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready");if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();sendTimeframe()}else syncFrames()});
-lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready");if($("app").classList.contains("is-symbol-transitioning"))sendTimeframe();else syncFrames()});revealFrame(logoFrame);revealFrame(timeframeFrame);
+lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready");if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();}else syncFrames()});
+lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready");if($("app").classList.contains("is-symbol-transitioning"))else syncFrames()});revealFrame(logoFrame);revealFrame(timeframeFrame);
 lifecycle.listen(window,"vegas-cards-ready",()=>{void refreshCards();if(typeof window.setCardOrder==="function"&&window.setCardOrder(signalStocks.map(x=>x.symbol)))$("rolling-cards-frame").classList.add("is-ready")});
 lifecycle.listen(window,"message",event=>{
  if(event.origin!==location.origin)return;
- if(event.source===timeframeFrame?.contentWindow){if(event.data?.type==="VEGAS_TIMEFRAME_READY")sendTimeframe();return}
- if(event.source===logoFrame?.contentWindow&&event.data?.type==="VEGAS_LOGO_READY"){if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();sendTimeframe()}else syncFrames();return}
+ if(event.source===logoFrame?.contentWindow&&event.data?.type==="VEGAS_LOGO_READY"){if($("app").classList.contains("is-symbol-transitioning")){sendLogoTransitionStart();}else syncFrames();return}
  if(event.source!==window)return;
  if(event.data?.type==="VEGAS_CARD_INTERACTION"&&typeof event.data.active==="boolean"){setInteractionLock("rolling-cards",event.data.active);return}
  if(event.data?.type==="VEGAS_CARD_SELECT"){const symbol=String(event.data.symbol||""),index=signalStocks.findIndex(x=>x.symbol===symbol);if(index>=0)void transitionToIndex(index)}
