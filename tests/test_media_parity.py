@@ -88,9 +88,8 @@ class MediaParityTests(unittest.TestCase):
 
   # Fixed 1D is the A-share adapter; the isolated iframe message contract remains.
   timeframe=self.read("site/assets/modules/timeframe-switch/index.html")
-  for marker in ('<span class="period" aria-current="true">1D</span>',"const valid = '1D'","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_READY","event.source !== window.parent","location.origin"):
-   self.assertIn(marker,timeframe)
-  for marker in ("scroll-snap","VEGAS_TIMEFRAME_SELECT","cloneNode","<button"):
+  self.assertIn('<span class="period" aria-current="true">1D</span>',timeframe)
+  for marker in ("scroll-snap","VEGAS_TIMEFRAME_SELECT","VEGAS_TIMEFRAME_SET","VEGAS_TIMEFRAME_READY","cloneNode","<button","<script>"):
    self.assertNotIn(marker,timeframe)
 
   # Ticker: dynamic A-share signal rows must keep the continuous marquee engine.
