@@ -1,5 +1,5 @@
-import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-common-systems-20261116-1";
-import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-common-systems-20261116-2";
+import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-media-parity-20261116-2";
+import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-media-parity-20261116-2";
 import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-20261116-1";
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-ema-snapshot-20261116-1";

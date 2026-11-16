@@ -4,7 +4,8 @@ export function createV6KlineView({host,onInteractionChange=()=>{}}){
 if(!host)throw new TypeError("K-line host element is required");
 const abort=new AbortController(),{signal}=abort,canvas=document.createElement("canvas");
 canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;background:transparent;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";host.appendChild(canvas);
-let viewportState=null;try{removeLegacyViewportState(localStorage);viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));}catch(_){}
+let viewportState=null,viewportKeyInitialized=false;try{removeLegacyViewportState(localStorage);viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));viewportKeyInitialized=Boolean(viewportState);}catch(_){}
+function migrateLegacyViewportKey(key){if(viewportKeyInitialized||typeof key!=="string"||!key)return;viewportKeyInitialized=true;try{const legacy=normalizeViewportState(JSON.parse(localStorage.getItem("vegas-v6-viewport:"+key)||"null"));if(legacy){viewportState=legacy;localStorage.setItem(VIEWPORT_STORAGE_KEY,JSON.stringify(legacy));}}catch(_){}}
 const ctx=canvas.getContext("2d"),overlayCanvas=document.createElement("canvas");overlayCanvas.setAttribute("aria-hidden","true");overlayCanvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;background:transparent;pointer-events:none";host.appendChild(overlayCanvas);
 const overlay=createVegasEmaOverlay({canvas:overlayCanvas}),T0=10,B=10,MINW=2,MAXW=40,RIGHT_GAP_BARS=.5;
 let C=[],W=0,H=0,dpr=1,barW=viewportState?.barW??9,right=0,lo=0,hi=1,inited=false,vel=0,lastT=0,raf=0,destroyed=false;
@@ -52,5 +53,5 @@ function setHistoryStatus(symbol,count,complete,state,error,timeframe="1D"){
  if(status==="request-failed")console.warn("[CN Tencent] "+symbol+" history request failed; retained "+count+" cached/latest "+timeframe+" candles.",error||"");
 }
 function destroy(){if(destroyed)return;resetInteraction();destroyed=true;abort.abort();observer.disconnect();if(raf)cancelAnimationFrame(raf);overlay.destroy();canvas.remove();overlayCanvas.remove();C=[]}
-host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,destroy})
+host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,migrateLegacyViewportKey,destroy})
 }
