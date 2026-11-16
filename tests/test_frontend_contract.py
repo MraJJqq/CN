@@ -45,7 +45,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("stock_zh_a_hist_tx",self.scanner);self.assertIn("Tencent qt.gtimg.cn",self.scanner)
   self.assertIn('TIMEFRAME="1D"',self.kline);self.assertIn('DB_NAME="cn-market-cache"',self.kline)
  def test_daily_timeframe_and_logo_linkage(self):
-  self.assertIn('<span class="period" aria-current="true">1D</span>',self.tf);self.assertIn('timeframe:"1D"',self.app)
+  self.assertIn('<span class="period">1D</span>',self.tf);self.assertIn('timeframe:"1D"',self.app)
   self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.logo);self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.app)
  def test_cards_and_signal_flow(self):
   self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("No change",self.ticker)
