@@ -139,5 +139,15 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertNotIn("../../assets/fonts/ChakraPetch-Bold.ttf",self.tf)
   self.assertIn("cn-timeframe-static-20261116-4",self.index)
 
+ def test_logo_and_timeframe_use_media_load_gate_and_dark_first_paint(self):
+  self.assertIn('<style id="cn-first-paint-guard">',self.index)
+  self.assertIn('html,body{background:#101010;color-scheme:dark}',self.index)
+  self.assertIn('#logo-frame,#timeframe-frame{background:#101010;opacity:0}',self.index)
+  self.assertIn('html,body{background:#101010',self.module_css)
+  self.assertNotIn("function revealFrame(",self.app)
+  self.assertNotIn("revealFrame(logoFrame)",self.app)
+  self.assertIn('lifecycle.listen(logoFrame,"load",()=>{logoFrame.classList.add("is-ready")',self.app)
+  self.assertIn('lifecycle.listen(timeframeFrame,"load",()=>{timeframeFrame.classList.add("is-ready")',self.app)
+
 
 if __name__=="__main__":unittest.main()

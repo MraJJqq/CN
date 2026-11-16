@@ -91,6 +91,20 @@ try{
   if(counts.tickerCycles<1)throw new Error("Ticker did not recover after reload");
   console.log("CN reload pass "+pass+":",JSON.stringify(counts));
  }
+
+ const delayedFrameRequests=[];
+ const delayFrame=async route=>{delayedFrameRequests.push(route.request().url());await new Promise(resolve=>setTimeout(resolve,1200));await route.continue()};
+ await page.route("**/assets/modules/logo/logo.html*",delayFrame);
+ await page.route("**/assets/modules/timeframe-switch/index.html*",delayFrame);
+ await page.reload({waitUntil:"domcontentloaded"});
+ const firstPaintGate=await page.evaluate(()=>({modules:Object.fromEntries(["#logo-frame","#timeframe-frame"].map(s=>{const e=document.querySelector(s);return[s,{ready:e.classList.contains("is-ready"),opacity:Number(getComputedStyle(e).opacity)}]})),backgrounds:Object.fromEntries(["html","body","#app"].map(s=>[s,getComputedStyle(document.querySelector(s)).backgroundColor]))}));
+ if(!delayedFrameRequests.some(x=>x.includes("/logo/logo.html"))||!delayedFrameRequests.some(x=>x.includes("/timeframe-switch/index.html")))throw new Error("Delayed iframe load gate was not exercised");
+ if(Object.values(firstPaintGate.modules).some(x=>x.ready||x.opacity>0.01))throw new Error("Logo/timeframe iframe became visible before load completed: "+JSON.stringify(firstPaintGate));
+ if(Object.values(firstPaintGate.backgrounds).some(x=>x!=="rgb(16, 16, 16)"))throw new Error("Dark first-paint background missing during iframe load: "+JSON.stringify(firstPaintGate));
+ await page.waitForFunction(()=>["#logo-frame","#timeframe-frame"].every(s=>document.querySelector(s)?.classList.contains("is-ready")),{timeout:15000});
+ await page.unroute("**/assets/modules/logo/logo.html*",delayFrame);
+ await page.unroute("**/assets/modules/timeframe-switch/index.html*",delayFrame);
+ console.log("CN delayed iframe first-paint gate:",JSON.stringify({requests:delayedFrameRequests.length,firstPaintGate}));
  await page.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent("pagehide",{persisted:true}));window.dispatchEvent(new PageTransitionEvent("pageshow",{persisted:true}))});
  await page.waitForFunction(()=>document.documentElement.classList.contains("page-hidden")===false);
  const restored=await page.evaluate(()=>({ticker:document.querySelector("#signal-track").textContent.trim(),canvas:document.querySelectorAll("#kline-host>canvas").length,frames:document.querySelectorAll("#logo-frame,#timeframe-frame,#rolling-cards-frame").length}));
