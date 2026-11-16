@@ -57,21 +57,21 @@ jobs:
         id: bark
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         env:
-          BARK_KEY: ${{ secrets.BARK_KEY }}
+          BARK_KEY: ${{ secrets.A_SHARE_BARK_KEY }}
         run: |
           if [ -n "$BARK_KEY" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "Bark credentials are configured."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Bark push is disabled: add the repository Actions secret BARK_KEY in Settings > Secrets and variables > Actions."
+            echo "::warning::Bark push is disabled: confirm the repository Actions secret A_SHARE_BARK_KEY in Settings > Secrets and variables > Actions."
           fi
       - name: Push CN500 daily signals to Bark
         id: bark-push
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && steps.bark.outputs.configured == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
         env:
-          BARK_KEY: ${{ secrets.BARK_KEY }}
+          BARK_KEY: ${{ secrets.A_SHARE_BARK_KEY }}
           BARK_SERVER: ${{ secrets.BARK_SERVER }}
         run: python scripts/push_signals.py
       - name: Save Tencent cache snapshot
