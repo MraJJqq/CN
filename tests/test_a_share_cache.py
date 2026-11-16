@@ -101,7 +101,7 @@ class PagesPayloadValidationTests(unittest.TestCase):
    universe.append({"symbol":symbol,"last_date":last_date})
    chart={"symbol":symbol,"last_date":("2026-11-05" if bad_chart and i==0 else last_date),"ema_schema":2,"ema_periods":[12,144,169,576,676],"ema_source":"full-history-per-bar","bars":[[last_date,10,11,9,10,*([10]*5)]]}
    with gzip.open(charts/(symbol+".json.gz"),"wt",encoding="utf-8") as handle:json.dump(chart,handle)
-  summary={"universe_size":500,"eligible_count":len(universe),"fetch_error_count":fetch_errors,"market_date":max(dates),"web_ema_policy":"EMA12/144/169/576/676 calculated from full Tencent history and aligned to displayed bars"}
+  summary={"universe_size":500,"eligible_count":len(universe),"fetch_error_count":fetch_errors,"market_date":max(dates),"web_ema_policy":"EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars"}
   payloads={"cards.json":cards,"summary.json":summary,"universe.json":universe,"signals.json":[{"symbol":universe[0]["symbol"],"confirmation_date":summary["market_date"]}],"signals.previous.json":[],"trading-calendar.json":{"trading_days":[]}}
   for name,value in payloads.items():(data/name).write_text(json.dumps(value),encoding="utf-8")
   return data

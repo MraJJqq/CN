@@ -6,8 +6,8 @@ try{
  await page.bringToFront();
  await page.waitForFunction(()=>document.visibilityState==="visible",{timeout:10000});
  await page.waitForFunction(()=>typeof window.setCardOrder==="function",{timeout:30000});
- await page.waitForFunction(()=>window.__CC_READY__===true,{timeout:30000});
- await page.waitForFunction(()=>typeof window.__CC_CARD_SNAPSHOT_AT__==="number",{timeout:15000});
+ await page.waitForFunction(()=>window.__CN_READY__===true,{timeout:30000});
+ await page.waitForFunction(()=>typeof window.__CN_CARD_SNAPSHOT_AT__==="number",{timeout:15000});
  await page.waitForFunction(()=>["#logo-frame","#timeframe-frame","#rolling-cards-frame"].every(s=>{const e=document.querySelector(s);return e?.classList.contains("is-ready")&&Number(getComputedStyle(e).opacity)>=0.99}),{timeout:15000});
  const data=await page.evaluate(async()=>{
   const [summary,universe,signals]=await Promise.all(["summary.json","universe.json","signals.json"].map(async n=>{const r=await fetch("./data/"+n);if(!r.ok)throw new Error(n+" unavailable");return r.json()}));
@@ -20,16 +20,16 @@ try{
   const chart=await new Response(new Blob([await r.arrayBuffer()]).stream().pipeThrough(new DecompressionStream("gzip"))).json();
   const backgroundState=Object.fromEntries(["html","body","#app"].map(s=>[s,getComputedStyle(document.querySelector(s)).backgroundColor]));
   const transparentState=Object.fromEntries(["#kline-host","#logo-frame","#timeframe-frame","#rolling-cards-frame","#signal-ticker"].map(s=>[s,getComputedStyle(document.querySelector(s)).backgroundColor]));
-  return {expected,active:document.querySelectorAll("#vp>.c").length,bars:chart.bars?.length||0,cardSnapshotAt:window.__CC_CARD_SNAPSHOT_AT__||0,allCardSymbols:cards.map(x=>x.symbol),signalSymbols:activeSignals.map(x=>x.symbol),ticker:document.querySelector("#signal-track").textContent.trim(),visible,visibilityState:document.visibilityState,moduleState,backgroundState,transparentState};
+  return {expected,active:document.querySelectorAll("#vp>.c").length,bars:chart.bars?.length||0,cardSnapshotAt:window.__CN_CARD_SNAPSHOT_AT__||0,allCardSymbols:cards.map(x=>x.symbol),signalSymbols:activeSignals.map(x=>x.symbol),ticker:document.querySelector("#signal-track").textContent.trim(),visible,visibilityState:document.visibilityState,moduleState,backgroundState,transparentState};
  });
- console.log("CC browser diagnostics:",JSON.stringify(data));
+ console.log("CN browser diagnostics:",JSON.stringify(data));
  if(data.bars<1||data.active!==data.expected||!data.cardSnapshotAt||!data.ticker||!data.visible)throw new Error("A-share data/card/ticker/module visibility contract failed");
- if(data.backgroundState["#app"]!=="rgb(16, 16, 16)")throw new Error("CC main container background must remain #101010: "+JSON.stringify(data.backgroundState));
- if(Object.values(data.transparentState).some(value=>value!=="rgba(0, 0, 0, 0)"))throw new Error("CC module containers must remain transparent: "+JSON.stringify(data.transparentState));
+ if(data.backgroundState["#app"]!=="rgb(16, 16, 16)")throw new Error("CN main container background must remain #101010: "+JSON.stringify(data.backgroundState));
+ if(Object.values(data.transparentState).some(value=>value!=="rgba(0, 0, 0, 0)"))throw new Error("CN module containers must remain transparent: "+JSON.stringify(data.transparentState));
  const logoAssetCheck=await page.evaluate(async()=>{const response=await fetch("./assets/Brand/VEGAS-Logo.svg");if(!response.ok)throw new Error("VEGAS logo SVG unavailable");const source=await response.text();const doc=new DOMParser().parseFromString(source,"image/svg+xml");if(doc.querySelector("parsererror"))throw new Error("VEGAS logo SVG is invalid XML");const background=[...doc.querySelectorAll("rect")].find(e=>Number(e.getAttribute("width"))>=200&&Number(e.getAttribute("height"))>=200&&e.getAttribute("fill")&&e.getAttribute("fill")!=="none");return{hasOpaqueFullCanvasBackground:Boolean(background)}});if(logoAssetCheck.hasOpaqueFullCanvasBackground)throw new Error("VEGAS logo SVG must not contain an opaque full-canvas background rectangle");
  const stress=await page.evaluate(({allCardSymbols,signalSymbols})=>{const start=performance.now();const accepted=window.setCardOrder(allCardSymbols);const elapsed=performance.now()-start;const count=document.querySelectorAll("#vp>.c").length;const restored=window.setCardOrder(signalSymbols);return{accepted,elapsed,count,restored,restoredCount:document.querySelectorAll("#vp>.c").length}},{allCardSymbols:data.allCardSymbols,signalSymbols:data.signalSymbols});
  if(!stress.accepted||stress.count!==500||!stress.restored||stress.restoredCount!==data.expected||stress.elapsed>5000)throw new Error("CN500 500-card stress check failed: "+JSON.stringify(stress));
- console.log("CC CN500 500-card DOM stress:",JSON.stringify(stress));
+ console.log("CN CN500 500-card DOM stress:",JSON.stringify(stress));
  for(const v of [{width:390,height:844},{width:844,height:390},{width:320,height:740},{width:768,height:1024},{width:1024,height:768}]){
   await page.setViewportSize(v);await page.waitForTimeout(80);
   const l=await page.evaluate(()=>Object.fromEntries(["#app","#logo-frame","#timeframe-frame","#kline-host","#rolling-cards-frame","#signal-ticker"].map(s=>{const e=document.querySelector(s);if(!e)throw new Error("Required layout element missing: "+s);const r=e.getBoundingClientRect();return[s,{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,z:getComputedStyle(e).zIndex}]})));
@@ -45,7 +45,7 @@ try{
   if(l["#timeframe-frame"].left<0||l["#timeframe-frame"].right>v.width+1||l["#timeframe-frame"].bottom>v.height+1)throw new Error("Timeframe safe-area bounds failed");
  }
  const viewportInteraction=await page.evaluate(async()=>{
-  const key="cc-kline-viewport-v1",canvas=document.querySelector("#kline-host>canvas:not([aria-hidden=true])");
+  const key="cn-kline-viewport-v1",canvas=document.querySelector("#kline-host>canvas:not([aria-hidden=true])");
   if(!canvas)throw new Error("K-line interaction canvas missing");
   const supports=(doc)=>{
    const visit=rules=>{for(const rule of rules){if(rule.type===12&&/not\s*\(\s*height\s*:\s*100dvh\s*\)/i.test(rule.conditionText||""))return true;if(rule.cssRules&&visit(rule.cssRules))return true;}return false};
@@ -68,24 +68,24 @@ try{
  });
  if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback)throw new Error("A 100dvh fallback @supports rule was not parsed in both page and timeframe iframe: "+JSON.stringify(viewportInteraction));
  if(!viewportInteraction.dragChanged||!viewportInteraction.pinchChanged)throw new Error("K-line drag/pinch interaction contract failed: "+JSON.stringify(viewportInteraction));
- console.log("CC viewport interaction and CSS fallback:",JSON.stringify(viewportInteraction));
+ console.log("CN viewport interaction and CSS fallback:",JSON.stringify(viewportInteraction));
  if(errors.length)throw new Error(errors.join(" | "));
  for(let pass=1;pass<=2;pass++){
   await page.reload({waitUntil:"domcontentloaded"});
-  await page.waitForFunction(()=>window.__CC_READY__===true&&typeof window.setCardOrder==="function",{timeout:30000});
-  await page.waitForFunction(()=>typeof window.__CC_CARD_SNAPSHOT_AT__==="number",{timeout:15000});
+  await page.waitForFunction(()=>window.__CN_READY__===true&&typeof window.setCardOrder==="function",{timeout:30000});
+  await page.waitForFunction(()=>typeof window.__CN_CARD_SNAPSHOT_AT__==="number",{timeout:15000});
   await page.waitForFunction(()=>["#logo-frame","#timeframe-frame","#rolling-cards-frame"].every(s=>document.querySelector(s)?.classList.contains("is-ready")),{timeout:15000});
   const counts=await page.evaluate(()=>({mainCanvas:document.querySelectorAll("#kline-host>canvas").length,overlayCanvas:document.querySelectorAll("#kline-host>canvas[aria-hidden=true]").length,logoFrames:document.querySelectorAll("#logo-frame").length,timeframeFrames:document.querySelectorAll("#timeframe-frame").length,cardNodes:document.querySelectorAll("#vp>.c").length,tickerCycles:document.querySelectorAll("#signal-track>.signal-cycle").length}));
   if(counts.mainCanvas!==2||counts.overlayCanvas!==1||counts.logoFrames!==1||counts.timeframeFrames!==1)throw new Error("Reload left duplicate core module DOM: "+JSON.stringify(counts));
   if(counts.cardNodes!==data.expected)throw new Error("Reload left stale/duplicate card DOM: "+JSON.stringify(counts));
   if(counts.tickerCycles<1)throw new Error("Ticker did not recover after reload");
-  console.log("CC reload pass "+pass+":",JSON.stringify(counts));
+  console.log("CN reload pass "+pass+":",JSON.stringify(counts));
  }
  await page.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent("pagehide",{persisted:true}));window.dispatchEvent(new PageTransitionEvent("pageshow",{persisted:true}))});
  await page.waitForFunction(()=>document.documentElement.classList.contains("page-hidden")===false);
  const restored=await page.evaluate(()=>({ticker:document.querySelector("#signal-track").textContent.trim(),canvas:document.querySelectorAll("#kline-host>canvas").length,frames:document.querySelectorAll("#logo-frame,#timeframe-frame,#rolling-cards-frame").length}));
  if(!restored.ticker||restored.canvas!==2||restored.frames!==3)throw new Error("BFCache-style pageshow recovery failed: "+JSON.stringify(restored));
  if(errors.length)throw new Error(errors.join(" | "));
- console.log("CC BFCache-style recovery:",JSON.stringify(restored));
- console.log("CC browser smoke passed: Tencent daily chart, CN500 signal cards, ticker, five viewport layouts, and two reload cycles.");
+ console.log("CN BFCache-style recovery:",JSON.stringify(restored));
+ console.log("CN browser smoke passed: Tencent daily chart, CN500 signal cards, ticker, five viewport layouts, and two reload cycles.");
 }finally{await browser.close()}

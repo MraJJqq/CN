@@ -46,7 +46,7 @@ def validate_payload(data: Path) -> dict:
         raise ValueError("CN500 summary and eligible universe counts disagree")
     if summary.get("fetch_error_count") != 0:
         raise ValueError("Refusing to publish a snapshot with Tencent fetch errors")
-    if summary.get("web_ema_policy") != "EMA12/144/169/576/676 calculated from full Tencent history and aligned to displayed bars":
+    if summary.get("web_ema_policy") != "EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars":
         raise ValueError("Summary does not declare full-history EMA chart data")
 
     # The market date is the newest session present in the eligible universe.
