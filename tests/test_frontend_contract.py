@@ -5,7 +5,7 @@ class CNFrontendContractTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
   cls.index=(ROOT/"site/index.html").read_text(encoding="utf-8");cls.app=(ROOT/"site/assets/app.js").read_text(encoding="utf-8")
-  cls.media=(ROOT/"site/assets/css/full-screen-dynamic.css").read_text(encoding="utf-8");cls.module_css=(ROOT/"site/assets/css/v6-modules.css").read_text(encoding="utf-8");cls.tf_responsive=(ROOT/"site/assets/modules/timeframe-switch/responsive.css").read_text(encoding="utf-8")
+  cls.media=(ROOT/"site/assets/css/full-screen-dynamic.css").read_text(encoding="utf-8");cls.module_css=(ROOT/"site/assets/css/v6-modules.css").read_text(encoding="utf-8");cls.tf_host=(ROOT/"site/assets/modules/timeframe-switch/host.css").read_text(encoding="utf-8")
   cls.logo=(ROOT/"site/assets/modules/logo/logo.js").read_text(encoding="utf-8");cls.tf=(ROOT/"site/assets/modules/timeframe-switch/index.html").read_text(encoding="utf-8")
   cls.ticker=(ROOT/"site/assets/modules/signal-ticker/ticker.js").read_text(encoding="utf-8");cls.kline=(ROOT/"site/assets/kline/tencent-kline-controller.js").read_text(encoding="utf-8")
   cls.scanner=(ROOT/"scripts/a_share_cache.py").read_text(encoding="utf-8")
@@ -32,7 +32,7 @@ class CNFrontendContractTests(unittest.TestCase):
    self.assertIn(marker,self.media)
 
  def test_viewport_fallback_supports_syntax_and_migration_order(self):
-  for source in (self.media,self.tf_responsive):
+  for source in (self.media,):
    self.assertIn("@supports not (height: 100dvh)",source)
    self.assertNotIn("@supports not(height:100dvh)",source)
   controller=self.kline
@@ -44,7 +44,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("stock_zh_a_hist_tx",self.scanner);self.assertIn("Tencent qt.gtimg.cn",self.scanner)
   self.assertIn('TIMEFRAME="1D"',self.kline);self.assertIn('DB_NAME="cn-market-cache"',self.kline)
  def test_daily_timeframe_and_logo_linkage(self):
-  self.assertIn(">1D<",self.tf);self.assertIn('timeframe:"1D"',self.app)
+  self.assertIn(">1D<",self.tf);self.assertIn("const valid = ['1D']",self.tf);self.assertIn('timeframe:"1D"',self.app)
   self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.logo);self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.app)
  def test_cards_and_signal_flow(self):
   self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("No change",self.ticker)
@@ -62,10 +62,12 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("html.page-hidden",self.module_css)
  def test_fullscreen_rules_are_centralized(self):
   self.assertNotIn("full-screen-dynamic.css",self.tf)
-  self.assertIn("responsive.css",self.tf)
+  self.assertNotIn("responsive.css",self.index)
+  self.assertIn("scroll-snap-type: y mandatory",self.tf)
+  self.assertIn("clip-path:inset(68.83% 0 0 0)",self.tf_host)
+  self.assertIn("height:calc(100vh - var(--v6-safe-bottom, 0px))!important",self.tf_host)
   self.assertIn("100dvh",self.media)
   self.assertIn("safe-area-inset-bottom",self.media)
-  self.assertIn("height:100%",self.tf_responsive)
   self.assertIn("?v=cn-batch-20261116-1",self.index)
  def test_browser_kline_cache_is_bounded(self):
   self.assertIn("MAX_CACHED_CANDLES=1200",self.kline_controller)
