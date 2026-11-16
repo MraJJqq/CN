@@ -158,7 +158,7 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
   selection++;const token=selection;symbol=nextSymbol;historyComplete=false;
   if(activeRequest)activeRequest.abort();
   if(!canWork())return false;
-  const key=keyOf(nextSymbol),request=new AbortController();frame?.contentWindow?.migrateLegacyViewportKey?.(key);activeRequest=request;inflight.add(request);
+  const key=keyOf(nextSymbol),request=new AbortController();activeRequest=request;inflight.add(request);
   try{
    let cached;try{cached=await read(key)}catch(cacheError){cached=memoryCache.get(key)||{candles:[],historyComplete:false,updatedAt:0};onState({symbol,timeframe:TIMEFRAME,count:cached.candles.length,historyComplete:false,status:"cache-unavailable",mode:"memory-fallback",error:String(cacheError?.message||cacheError)})}
    if(!canWork()||token!==selection)return false;
