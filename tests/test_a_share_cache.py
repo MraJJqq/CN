@@ -7,12 +7,12 @@ from pathlib import Path
 from datetime import date,datetime
 from zoneinfo import ZoneInfo
 from unittest.mock import patch
-from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days
+from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days,exchange_closed_days
 from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session
 from scripts.a_share_cache import to_tencent_symbol,parse_tencent_quote_text,merge_frames,through_date,valid_bars,excluded_name,ema,normalize
 from scripts.validate_pages_payload import validate_payload
 
-class TradingCalendarTests(unittest.TestCase):
+OFFICIAL_SSE_2026 = """2026年休市安排 元旦：1月1日（星期四）至1月3日（星期六）休市，1月5日（星期一）起照常开市。另外，1月4日（星期日）为周末休市。春节：2月15日（星期日）至2月23日（星期一）休市，2月24日（星期二）起照常开市。另外，2月14日（星期六）、2月28日（星期六）为周末休市。清明节：4月4日（星期六）至4月6日（星期一）休市，4月7日（星期二）起照常开市。劳动节：5月1日（星期五）至5月5日（星期二）休市，5月6日（星期三）起照常开市。另外，5月9日（星期六）为周末休市。端午节：6月19日（星期五）至6月21日（星期日）休市，6月22日（星期一）起照常开市。中秋节：9月25日（星期五）至9月27日（星期日）休市，9月28日（星期一）起照常开市。国庆节：10月1日（星期四）至10月7日（星期三）休市，10月8日（星期四）起照常开市。另外，9月20日（星期日）、10月10日（星期六）为周末休市。相关公告"""\n\nclass TradingCalendarTests(unittest.TestCase):\n @classmethod\n def setUpClass(cls):\n  cls.calendar_patch=patch("scripts.trading_calendar._fetch_exchange_calendar_page",return_value=OFFICIAL_SSE_2026)\n  cls.calendar_patch.start();exchange_closed_days.cache_clear()\n @classmethod\n def tearDownClass(cls):\n  cls.calendar_patch.stop();exchange_closed_days.cache_clear()
  def test_after_close_uses_current_completed_session(self):
   now=datetime(2026,11,12,16,30,tzinfo=ZoneInfo("Asia/Shanghai"))
   self.assertEqual(latest_completed_session(date(2026,11,12),now),date(2026,11,12))
@@ -22,7 +22,7 @@ class TradingCalendarTests(unittest.TestCase):
  def test_non_trading_day_uses_previous_session_even_after_close(self):
   now=datetime(2026,11,14,16,30,tzinfo=ZoneInfo("Asia/Shanghai"))
   self.assertEqual(latest_completed_session(date(2026,11,14),now),date(2026,11,13))
- def test_weekend_is_not_a_trading_day(self):
+ def test_official_exchange_holiday_range_is_parsed(self):\n  closed=exchange_closed_days(2026)\n  self.assertIn(date(2026,10,1),closed);self.assertIn(date(2026,10,7),closed)\n  self.assertNotIn(date(2026,10,8),closed)\n def test_weekend_is_not_a_trading_day(self):
   self.assertFalse(is_a_share_trading_day(date(2026, 11, 7)))
  def test_public_holiday_is_not_a_trading_day(self):
   self.assertFalse(is_a_share_trading_day(date(2026, 10, 1)))
