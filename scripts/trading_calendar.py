@@ -43,7 +43,12 @@ def china_today() -> date:
 def _fetch_exchange_calendar_page() -> str:
     response = requests.get(
         SSE_CALENDAR_URL,
-        headers={\n            "User-Agent": "Mozilla/5.0 (compatible; VEGAS-CN/1.0)",\n            "Referer": "https://www.sse.com.cn/",\n            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",\n            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5",\n        },
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; VEGAS-CN/1.0)",
+            "Referer": "https://www.sse.com.cn/",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5",
+        },
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
@@ -157,8 +162,10 @@ def main() -> int:
 
     if args.github_output:
         with Path(args.github_output).open("a", encoding="utf-8") as handle:
-            handle.write(f"is-trading-day={'true' if status['is_trading_day'] else 'false'}\n")
-            handle.write(f"trade-date={day.isoformat()}\n")
+            handle.write(f"is-trading-day={'true' if status['is_trading_day'] else 'false'}
+")
+            handle.write(f"trade-date={day.isoformat()}
+")
 
     print(json.dumps(status, ensure_ascii=False), flush=True)
     if not status["is_trading_day"]:
