@@ -50,7 +50,7 @@ jobs:
               restored=1
               break
             fi
-          done < <(gh run list --workflow a-share-daily.yml --status success --limit 30 --json databaseId,number --jq '.[] | "\(.databaseId) \(.number)"')
+          done < <(gh run list --workflow a-share-daily.yml --limit 30 --json databaseId,number,status --jq '.[] | select(.status == "completed") | "\(.databaseId) \(.number)"')
           if [ "$restored" -ne 1 ]; then
             echo "No valid A-share Pages data snapshot found; refusing to publish an incomplete site."
             exit 1
