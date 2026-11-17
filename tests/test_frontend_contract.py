@@ -148,8 +148,9 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("daily scan is not published yet",self.app)
   self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
  def test_five_minute_live_market_refresh_only_updates_signal_carousel_symbols(self):
-  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000)","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()"):
+  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh())","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()","function millisecondsUntilNextMarketRefresh()","if(isChinaTradingSession())return 300000","[[9,30],[13,0]]"):
    self.assertIn(marker,self.app)
+  self.assertIn("millisecondsUntilNextMarketRefresh()",self.app[self.app.index("function scheduleMarketRefresh()"):self.app.index("function startForegroundTimers()")])
   self.assertIn("liveQuoteBySymbol.get(item.symbol)",self.app)
   self.assertNotIn("const symbol=controller.state.symbol",self.app)
   self.assertNotIn("window.updateQuotes(updates)",self.app)
