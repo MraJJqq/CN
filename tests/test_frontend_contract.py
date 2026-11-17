@@ -60,7 +60,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
   self.assertIn('next.length?"ready":"previous"',self.app)
   self.assertIn('"▰ 上次扫描 ▰   "',self.ticker)
-  self.assertIn("cn-live-market-20261117-4",self.index)
+  self.assertIn("cn-live-market-20261117-5",self.index)
   self.assertIn("cn-signal-previous-20261117-1",self.app)
   self.assertIn("value.checked_on!==chinaCalendarDate()",self.app)
  def test_fullscreen_panel_geometry(self):
@@ -147,13 +147,16 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("},300000)",self.app)
   self.assertIn("daily scan is not published yet",self.app)
   self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
- def test_five_minute_live_market_refresh_only_updates_displayed_kline_symbol(self):
-  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000)","liveQuotes.read(symbol)","controller.state.symbol","controller.updateLiveQuote","isChinaTradingSession()"):
+ def test_five_minute_live_market_refresh_only_updates_signal_carousel_symbols(self):
+  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000)","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()"):
    self.assertIn(marker,self.app)
+  self.assertIn("liveQuoteBySymbol.get(item.symbol)",self.app)
+  self.assertNotIn("const symbol=controller.state.symbol",self.app)
+  self.assertNotIn("window.updateQuotes(updates)",self.app)
+  self.assertNotIn("refreshCards(",self.app[self.app.index("async function refreshLiveMarket()"):self.app.index("function scheduleMarketRefresh()")])
   for marker in ('ENDPOINT="https://qt.gtimg.cn/q="',"window[\"v_\"+symbol]","f[3]","f[4]","f[34]","f[35]","ENDPOINT+symbol"):
    self.assertIn(marker,self.live_quotes)
   self.assertNotIn("BATCH_SIZE",self.live_quotes)
-  self.assertNotIn("window.updateQuotes(updates)",self.app)
   self.assertIn("updateLiveQuote(quote)",self.kline_controller)
   self.assertIn('"live-quote"',self.kline_controller)
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
