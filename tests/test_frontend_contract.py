@@ -150,9 +150,11 @@ class CNFrontendContractTests(unittest.TestCase):
  def test_five_minute_live_market_refresh_is_separate_from_daily_signal_scan(self):
   for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000)","await controller.refresh()","liveQuotes.read(rows)","controller.updateLiveQuote","isChinaTradingSession()"):
    self.assertIn(marker,self.app)
-  for marker in ('ENDPOINT="https://qt.gtimg.cn/q="',"BATCH_SIZE=50","f[3]","f[4]","f[12]","f[13]"):
+  for marker in ('ENDPOINT="https://qt.gtimg.cn/q="',"BATCH_SIZE=50","f[3]","f[4]","f[34]","f[35]"):
    self.assertIn(marker,self.live_quotes)
   self.assertIn("updateLiveQuote(quote)",self.kline_controller)
+  self.assertIn('window["v_"+symbol]',self.live_quotes)
+  self.assertIn('symbols.join(",")',self.live_quotes)
   self.assertIn(r"/^(sh|sz|bj)\d{6}$/",self.live_quotes)
   self.assertIn("updates.push([i,quote.price,quote.previousClose,quote.open,quote.high,quote.low])",self.live_quotes)
   self.assertIn('"live-quote"',self.kline_controller)

@@ -1,10 +1,10 @@
 const ENDPOINT="https://qt.gtimg.cn/q=";
 const BATCH_SIZE=50;
 function parse(symbol){
- const raw=window["v_s_"+symbol];if(typeof raw!=="string")return null;
+ const raw=window["v_"+symbol];if(typeof raw!=="string")return null;
  const f=raw.split("~"),price=Number(f[3]),previousClose=Number(f[4]),open=Number(f[5]);
  if(!(price>0)||!(previousClose>0))return null;
- const high=Number(f[12]),low=Number(f[13]);
+ const high=Number(f[34]),low=Number(f[35]);
  return {symbol,price,previousClose,open:open>0?open:previousClose,high:high>0?high:price,low:low>0?low:price};
 }
 function loadBatch(symbols){
@@ -13,7 +13,7 @@ function loadBatch(symbols){
   const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);script.onload=script.onerror=null;script.remove();if(error)reject(error);else resolve(symbols.map(parse).filter(Boolean))};
   const timer=setTimeout(()=>finish(new Error("Tencent quote request timed out")),15000);
   script.async=true;script.charset="gbk";script.onload=()=>finish(null);script.onerror=()=>finish(new Error("Tencent quote script failed to load"));
-  script.src=ENDPOINT+symbols.map(s=>"s_"+s).join(",")+"&_="+Date.now();document.head.appendChild(script);
+  script.src=ENDPOINT+symbols.join(",")+"&_="+Date.now();document.head.appendChild(script);
  });
 }
 export function createTencentLiveQuotes(){
