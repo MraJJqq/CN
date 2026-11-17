@@ -2,7 +2,7 @@ import {createV6KlineView} from "./kline/v6-kline-view.js?v=cn-residue-cleanup-2
 import {createTencentKlineController} from "./kline/tencent-kline-controller.js?v=cn-residue-cleanup-20261116-3";
 import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-20261116-1";
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
-import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-ema-snapshot-20261116-1";
+import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-signal-previous-20261117-1";
 import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
@@ -36,7 +36,7 @@ function readSignalSnapshot(){
 function applySignalSnapshot(snapshot){
  activeSignalDate=snapshot.market_date;activeSignalSnapshot=snapshot;universe=snapshot.universe;
  const next=snapshot.signals;
- signalStocks=createNonRepeatingQueue(next);ticker.render(next.length?next:snapshot.previous_signals,"ready");
+ signalStocks=createNonRepeatingQueue(next);ticker.render(next.length?next:snapshot.previous_signals,next.length?"ready":"previous");
  if(typeof window.setCardOrder==="function"){
   if(!window.setCardOrder(signalStocks.map(x=>x.symbol)))console.error("[CN] card order rejected");
   else $("rolling-cards-frame").classList.add("is-ready");
