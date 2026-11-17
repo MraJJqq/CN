@@ -9,8 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from scripts.a_share_cache import latest_completed_session
-from scripts.trading_calendar import china_today
+try:
+    from .a_share_cache import latest_completed_session
+    from .trading_calendar import china_today
+except ImportError:
+    from a_share_cache import latest_completed_session
+    from trading_calendar import china_today
 
 
 REQUIRED_FILES = (
