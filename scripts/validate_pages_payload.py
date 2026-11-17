@@ -5,7 +5,12 @@ from __future__ import annotations
 import gzip
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from scripts.a_share_cache import latest_completed_session
+from scripts.trading_calendar import china_today
 
 
 REQUIRED_FILES = (
@@ -25,7 +30,7 @@ def _load(path: Path):
         raise ValueError(f"Missing or invalid JSON payload: {path.name}") from error
 
 
-def validate_payload(data: Path) -> dict:
+def validate_payload(data: Path, expected_market_date: str | None = None) -> dict:
     missing = [name for name in REQUIRED_FILES if not (data / name).is_file()]
     if missing:
         raise ValueError(f"Missing Pages data files: {missing}")
@@ -34,14 +39,15 @@ def validate_payload(data: Path) -> dict:
     summary = _load(data / "summary.json")
     universe = _load(data / "universe.json")
     signals = _load(data / "signals.json")
+    previous_signals = _load(data / "signals.previous.json")
 
     if not isinstance(cards, list) or len(cards) != 500:
         raise ValueError("CN500 cards payload must contain exactly 500 rows")
     card_symbols = [row.get("symbol") for row in cards if isinstance(row, dict)]
     if len(card_symbols) != 500 or len(set(card_symbols)) != 500 or any(not symbol for symbol in card_symbols):
         raise ValueError("CN500 cards payload must contain exactly 500 unique symbols")
-    if not isinstance(universe, list) or not isinstance(signals, list):
-        raise ValueError("Universe and signals payloads must be arrays")
+    if not isinstance(universe, list) or not isinstance(signals, list) or not isinstance(previous_signals, list):
+        raise ValueError("Universe and signal payloads must be arrays")
     if summary.get("universe_size") != 500 or summary.get("eligible_count") != len(universe):
         raise ValueError("CN500 summary and eligible universe counts disagree")
     if summary.get("fetch_error_count") != 0:
@@ -56,6 +62,14 @@ def validate_payload(data: Path) -> dict:
     newest_date = max((str(row.get("last_date") or "") for row in universe), default="")
     if not market_date or market_date != newest_date:
         raise ValueError("Summary market date must equal the newest eligible-stock date")
+    if expected_market_date is not None and market_date != expected_market_date:
+        raise ValueError(
+            "Refusing stale market payload: "
+            f"expected latest completed SSE session {expected_market_date}, got {market_date}"
+        )
+    previous_market_date = summary.get("previous_market_date")
+    if not previous_market_date:
+        raise ValueError("Summary is missing previous_market_date")
 
     symbols = [row.get("symbol") for row in universe if isinstance(row, dict)]
     if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not symbol for symbol in symbols):
@@ -63,6 +77,15 @@ def validate_payload(data: Path) -> dict:
     symbol_set = set(symbols)
     if any(row.get("symbol") not in symbol_set or row.get("confirmation_date") != market_date for row in signals):
         raise ValueError("Signal payload contains an unknown symbol or non-current session")
+    if any(
+        not isinstance(row, dict)
+        or row.get("symbol") not in symbol_set
+        or row.get("confirmation_date") != previous_market_date
+        for row in previous_signals
+    ):
+        raise ValueError("Previous signal payload contains an unknown symbol or wrong previous session")
+    if len(signals) != summary.get("today_signal_count") or len(previous_signals) != summary.get("previous_signal_count"):
+        raise ValueError("Summary and current/previous signal counts disagree")
 
     charts = data / "charts"
     chart_files = list(charts.glob("*.json.gz")) if charts.is_dir() else []
@@ -97,7 +120,9 @@ def validate_payload(data: Path) -> dict:
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    result = validate_payload(root / "site" / "data")
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    expected = latest_completed_session(china_today(), now).isoformat()
+    result = validate_payload(root / "site" / "data", expected_market_date=expected)
     print(
         "Pages payload verified: "
         f'{result["cards"]} CN500 cards, {result["eligible"]} eligible charts, '
