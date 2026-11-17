@@ -1,0 +1,12 @@
+{
+  "source": "MraJJqq/Media",
+  "source_file": "Charts/ema-colors.json",
+  "ema_colors": {
+    "EMA12": "#f5d76e",
+    "EMA144": "#f4d35e",
+    "EMA169": "#f4d35e",
+    "EMA576": "#ff4e5e",
+    "EMA676": "#ff4e5e"
+  },
+  "notes": "A股 Vegas EMA 视觉规范：过滤线 EMA12；中锋 EMA144/EMA169；红峰 EMA576/EMA676。A股不使用 EMA36/EMA43。"
+}
