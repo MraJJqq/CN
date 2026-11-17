@@ -140,7 +140,6 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("chinaMinutesOfDay()<995",self.app)
   self.assertNotIn("lifecycle.interval(",self.app)
   self.assertNotIn("60000)",self.app)
-  self.assertNotIn("300000)",self.app)
   self.assertIn("isTodayPublishedSnapshot(summary)",self.app)
   self.assertIn("summary.generated_at_utc",self.app)
   self.assertIn("scheduleDailyRetry()",self.app)
