@@ -140,7 +140,12 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("chinaMinutesOfDay()<995",self.app)
   self.assertNotIn("lifecycle.interval(",self.app)
   self.assertNotIn("60000)",self.app)
-  self.assertNotIn("300000)",self.app)
+  self.assertIn("isTodayPublishedSnapshot(summary)",self.app)
+  self.assertIn("summary.generated_at_utc",self.app)
+  self.assertIn("scheduleDailyRetry()",self.app)
+  self.assertIn("},300000)",self.app)
+  self.assertIn("daily scan is not published yet",self.app)
+  self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
   self.assertIn("if(dbp)dbp.then(db=>db?.close()).catch(()=>{});",self.kline_controller)
 
