@@ -180,10 +180,23 @@ async function refreshLiveMarket(){
   return refreshed>0;
  }finally{marketRefreshBusy=false}
 }
+function millisecondsUntilNextMarketRefresh(){
+ if(isChinaTradingSession())return 300000;
+ const t=chinaClock(),now=Date.now(),base=Date.UTC(t.year,t.month-1,t.day);
+ for(let offset=0;offset<8;offset++){
+  const day=new Date(base+offset*86400000),weekday=day.getUTCDay();
+  if(weekday===0||weekday===6)continue;
+  for(const [hour,minute] of [[9,30],[13,0]]){
+   const target=Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate(),hour,minute);
+   if(target>now)return Math.max(1000,target-now);
+  }
+ }
+ return 86400000;
+}
 function scheduleMarketRefresh(){
  if(destroyed||isHidden())return;
  if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);
- marketRefreshTimer=setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000);
+ marketRefreshTimer=setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh());
 }
 function startForegroundTimers(){
  if(destroyed||isHidden())return;
