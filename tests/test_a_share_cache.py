@@ -109,6 +109,13 @@ class TencentNameParserTests(unittest.TestCase):
   self.assertEqual(names["sz000001"],"平安银行")
 
 class PagesPayloadValidationTests(unittest.TestCase):
+ @classmethod
+ def setUpClass(cls):
+  cls.calendar_patch=patch("scripts.trading_calendar._fetch_exchange_calendar_page",return_value=OFFICIAL_SSE_2026)
+  cls.calendar_patch.start();exchange_closed_days.cache_clear()
+ @classmethod
+ def tearDownClass(cls):
+  cls.calendar_patch.stop();exchange_closed_days.cache_clear()
  def _write_payload(self, root, dates=("2026-11-09","2026-11-06","2026-11-09"), fetch_errors=0, bad_chart=False):
   data=Path(root)/"data";charts=data/"charts";charts.mkdir(parents=True)
   cards=[{"symbol":f"CN{i:03d}"} for i in range(500)]
@@ -133,6 +140,15 @@ class PagesPayloadValidationTests(unittest.TestCase):
  def test_rejects_chart_date_mismatch(self):
   with tempfile.TemporaryDirectory() as directory:
    with self.assertRaisesRegex(ValueError,"date-mismatched"):validate_payload(self._write_payload(directory,bad_chart=True))
+ def test_rejects_wrong_previous_market_date(self):
+  with tempfile.TemporaryDirectory() as directory:
+   data=self._write_payload(directory)
+   summary=json.loads((data/"summary.json").read_text(encoding="utf-8"))
+   summary["previous_market_date"]="2026-11-05"
+   (data/"summary.json").write_text(json.dumps(summary),encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"official prior SSE session"):
+    validate_payload(data,expected_market_date="2026-11-09")
+
  def test_rejects_stale_market_date_even_when_payload_is_internally_consistent(self):
   with tempfile.TemporaryDirectory() as directory:
    with self.assertRaisesRegex(ValueError,"latest completed SSE session"):
