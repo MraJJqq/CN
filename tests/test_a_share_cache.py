@@ -85,7 +85,13 @@ class TencentCacheTests(unittest.TestCase):
   x=pd.DataFrame([["2024-01-02",10,11,9,10,100,1000],["2024-01-03",10,11,9,10,-1,1000],["2024-01-04",10,11,9,10,100,None]],columns=cols)
   self.assertEqual(len(valid_bars(x)),1)
  def test_ema(self):
-  x=ema(pd.Series(range(1,20),dtype=float),12);self.assertTrue(pd.isna(x.iloc[10]));self.assertTrue(pd.notna(x.iloc[11]))
+  values=pd.Series(range(1,20),dtype=float)
+  actual=ema(values,12)
+  expected=values.ewm(span=12,adjust=False,min_periods=12).mean()
+  pd.testing.assert_series_equal(actual,expected)
+  self.assertTrue(pd.isna(actual.iloc[10]));self.assertTrue(pd.notna(actual.iloc[11]))
+ def test_ema_rejects_invalid_period(self):
+  with self.assertRaises(ValueError):ema(pd.Series([1.0,2.0]),0)
  def test_names(self):
   self.assertTrue(excluded_name("ST某某"));self.assertTrue(excluded_name("某某退"));self.assertFalse(excluded_name("贵州茅台"))
  def test_corrupt_cache_is_rebuilt_from_tencent(self):
