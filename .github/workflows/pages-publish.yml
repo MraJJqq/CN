@@ -23,6 +23,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install validator dependency
+        run: python -m pip install "requests>=2.31,<3"
       - uses: actions/configure-pages@v6
       - name: Restore the latest valid A-share data snapshot
         env:
