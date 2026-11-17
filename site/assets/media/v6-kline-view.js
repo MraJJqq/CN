@@ -1,10 +1,10 @@
-import{createVegasEmaOverlay}from"./v6-vegas-ema.js?v=cn-ema-snapshot-20261116-1";
-import{VIEWPORT_STORAGE_KEY,captureViewportState,normalizeViewportState,resolveViewportRight}from"./v6-viewport-state.js?v=cn-viewport-isolated-20261116-1";
+import{createVegasEmaOverlay}from"./v6-vegas-ema.js";
+import{VIEWPORT_STORAGE_KEY,captureViewportState,normalizeViewportState,removeLegacyViewportState,resolveViewportRight}from"./v6-viewport-state.js";
 export function createV6KlineView({host,onInteractionChange=()=>{}}){
 if(!host)throw new TypeError("K-line host element is required");
 const abort=new AbortController(),{signal}=abort,canvas=document.createElement("canvas");
 canvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0;background:transparent;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";host.appendChild(canvas);
-let viewportState=null;try{viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));}catch(_){}
+let viewportState=null,viewportKeyInitialized=false;try{removeLegacyViewportState(localStorage);viewportState=normalizeViewportState(JSON.parse(localStorage.getItem(VIEWPORT_STORAGE_KEY)||"null"));viewportKeyInitialized=Boolean(viewportState);}catch(_){}
 const ctx=canvas.getContext("2d"),overlayCanvas=document.createElement("canvas");overlayCanvas.setAttribute("aria-hidden","true");overlayCanvas.style.cssText="position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;background:transparent;pointer-events:none";host.appendChild(overlayCanvas);
 const overlay=createVegasEmaOverlay({canvas:overlayCanvas}),T0=10,B=10,MINW=2,MAXW=40,RIGHT_GAP_BARS=.5;
 let C=[],W=0,H=0,dpr=1,barW=viewportState?.barW??9,right=0,lo=0,hi=1,inited=false,vel=0,lastT=0,raf=0,destroyed=false;
@@ -14,6 +14,7 @@ function setRight(v){
  right=clamp(v,0,maxRight);
 }
 function saveViewport(){const next=captureViewportState(C,right,barW);if(!next)return;viewportState=next;try{localStorage.setItem(VIEWPORT_STORAGE_KEY,JSON.stringify(next))}catch(_){}}
+function migrateLegacyViewportKey(key){if(viewportKeyInitialized||typeof key!=="string"||!key)return;viewportKeyInitialized=true;try{const legacy=normalizeViewportState(JSON.parse(localStorage.getItem("vegas-v6-viewport:"+key)||"null"));if(legacy){viewportState=legacy;localStorage.setItem(VIEWPORT_STORAGE_KEY,JSON.stringify(legacy));}}catch(_){}}
 function ask(){if(!raf&&!destroyed)raf=requestAnimationFrame(loop)}
 function resize(){if(destroyed)return;if(P.size||pinch)resetInteraction();dpr=Math.min(window.devicePixelRatio||1,2);const r=host.getBoundingClientRect();W=r.width;H=r.height;setRight(right);canvas.width=Math.max(1,Math.round(W*dpr));canvas.height=Math.max(1,Math.round(H*dpr));ask()}
 function yOf(p){return T0+(Math.log(hi)-Math.log(p))/(Math.log(hi)-Math.log(lo))*(H-T0-B)}
@@ -42,15 +43,15 @@ canvas.addEventListener("pointerup",end,{signal});canvas.addEventListener("point
 canvas.addEventListener("wheel",e=>{e.preventDefault();if(e.deltaX===0&&e.deltaY===0)return;interaction("kline-wheel",true);if(wheelEndTimer!==null)clearTimeout(wheelEndTimer);wheelEndTimer=setTimeout(()=>{wheelEndTimer=null;interaction("kline-wheel",false)},350);if(Math.abs(e.deltaX)>Math.abs(e.deltaY)&&!e.ctrlKey)setRight(right+e.deltaX/barW);else{const x=pos(e).x,ai=iAt(x);barW=clamp(barW*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)),MINW,MAXW);setRight(ai-.5+(W-x)/barW)}saveViewport();ask()},{passive:false,signal});
 canvas.addEventListener("touchmove",e=>e.preventDefault(),{passive:false,signal});canvas.addEventListener("contextmenu",e=>e.preventDefault(),{signal});["gesturestart","gesturechange","gestureend"].forEach(n=>canvas.addEventListener(n,e=>e.preventDefault(),{signal}));
 const observer=new ResizeObserver(resize);observer.observe(host);window.addEventListener("pagehide",()=>{resetInteraction();saveViewport()},{signal});window.addEventListener("pageshow",resetInteraction,{signal});window.addEventListener("blur",resetInteraction,{signal});document.addEventListener("visibilitychange",()=>{if(document.hidden){resetInteraction();saveViewport()}else resetInteraction()},{signal});resize();
-function setCandles(a){C=Array.isArray(a)?a:[];inited=false;vel=0;if(!C.length){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);overlay.setCandles([]);host.dataset.emaHistoryStatus="empty";host.dataset.emaHistorySymbol="";host.dataset.emaHistoryCount="0";host.dataset.emaAvailablePeriods="";ask();return;}if(viewportState){barW=viewportState.barW;const mapped=resolveViewportRight(C,viewportState,W);if(mapped!==null)right=mapped;else setRight(C.length-1+RIGHT_GAP_BARS);}else{setRight(C.length-1+RIGHT_GAP_BARS);saveViewport();}setRight(right);ask();}
-function setVegasEmaCandles(a){overlay.setCandles(Array.isArray(a)?a:[])}
-function setHistoryStatus(symbol,count,complete,state,error,timeframe="1D"){
+function setCandles(a){C=Array.isArray(a)?a:[];inited=false;vel=0;if(!C.length){ask();return;}if(viewportState){barW=viewportState.barW;const mapped=resolveViewportRight(C,viewportState,W);if(mapped!==null)right=mapped;else setRight(C.length-1+RIGHT_GAP_BARS);}else{setRight(C.length-1+RIGHT_GAP_BARS);saveViewport();}setRight(right);ask();}
+function setVegasEmaCandles(a){overlay.setCandles(a)}
+function setHistoryStatus(symbol,count,complete,state,error,timeframe="4H"){
  const status=state||(complete?(count>=676?"ready":"exchange-history-exhausted"):"incomplete");
  host.dataset.emaHistoryStatus=status;host.dataset.emaHistorySymbol=symbol;host.dataset.emaHistoryCount=String(count);
- host.dataset.emaAvailablePeriods=[12,144,169,576,676].filter(period=>count>=period).join(",");
- if(status==="exchange-history-exhausted")console.warn("[VEGAS CN] "+symbol+" exchange history exhausted at "+count+" "+timeframe+" candles; available EMA periods: "+host.dataset.emaAvailablePeriods);
- if(status==="request-failed")console.warn("[CN Tencent] "+symbol+" history request failed; retained "+count+" cached/latest "+timeframe+" candles.",error||"");
+ host.dataset.emaAvailablePeriods=[12,36,43,144,169,576,676].filter(period=>count>=period).join(",");
+ if(status==="exchange-history-exhausted")console.warn("[VEGAS V6] "+symbol+" exchange history exhausted at "+count+" "+timeframe+" candles; available EMA periods: "+host.dataset.emaAvailablePeriods);
+ if(status==="request-failed")console.warn("[VEGAS V6] "+symbol+" history request failed; retained "+count+" cached/latest "+timeframe+" candles.",error||"");
 }
 function destroy(){if(destroyed)return;resetInteraction();destroyed=true;abort.abort();observer.disconnect();if(raf)cancelAnimationFrame(raf);overlay.destroy();canvas.remove();overlayCanvas.remove();C=[]}
-host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,destroy})
+host.classList.add("is-ready");return Object.freeze({setCandles,setVegasEmaCandles,setHistoryStatus,migrateLegacyViewportKey,destroy})
 }
