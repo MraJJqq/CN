@@ -21,20 +21,22 @@ function createNonRepeatingQueue(items){
  const different=queue.findIndex(item=>item.symbol!==previous);if(different>0)queue.push(...queue.splice(0,different));
  try{if(queue.length)localStorage.setItem(ROTATION_START_KEY,queue[0].symbol)}catch(_){}return queue;
 }
+function chinaCalendarDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function readSignalSnapshot(){
  try{
   const raw=localStorage.getItem(SIGNAL_SNAPSHOT_KEY);if(!raw)return null;
   const value=JSON.parse(raw);
-  if(!value||typeof value.market_date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value.market_date)||!Array.isArray(value.universe)||!Array.isArray(value.signals))return null;
+  if(!value||typeof value.market_date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value.market_date)||value.checked_on!==chinaCalendarDate()||!Array.isArray(value.universe)||!Array.isArray(value.signals)||!Array.isArray(value.previous_signals)){localStorage.removeItem(SIGNAL_SNAPSHOT_KEY);return null}
   const symbols=new Set(value.universe.map(x=>x?.symbol).filter(Boolean));
   if(value.signals.some(x=>!x||x.confirmation_date!==value.market_date||!symbols.has(x.symbol)))return null;
-  return {market_date:value.market_date,universe:value.universe,signals:value.signals};
+  if(value.previous_signals.some(x=>!x||x.confirmation_date!==value.previous_market_date||!symbols.has(x.symbol)))return null;
+  return {market_date:value.market_date,previous_market_date:value.previous_market_date,universe:value.universe,signals:value.signals,previous_signals:value.previous_signals,checked_on:value.checked_on};
  }catch(_){return null}
 }
 function applySignalSnapshot(snapshot){
  activeSignalDate=snapshot.market_date;activeSignalSnapshot=snapshot;universe=snapshot.universe;
  const next=snapshot.signals;
- signalStocks=createNonRepeatingQueue(next);ticker.render(next,"ready");
+ signalStocks=createNonRepeatingQueue(next);ticker.render(next.length?next:snapshot.previous_signals,"ready");
  if(typeof window.setCardOrder==="function"){
   if(!window.setCardOrder(signalStocks.map(x=>x.symbol)))console.error("[CN] card order rejected");
   else $("rolling-cards-frame").classList.add("is-ready");
@@ -42,7 +44,7 @@ function applySignalSnapshot(snapshot){
  if(signalStocks.length)startCarousel(0);else{stopCarousel();clearSelectedStock()}
 }
 function persistSignalSnapshot(snapshot){
- try{localStorage.setItem(SIGNAL_SNAPSHOT_KEY,JSON.stringify(snapshot))}
+ try{localStorage.setItem(SIGNAL_SNAPSHOT_KEY,JSON.stringify({...snapshot,checked_on:chinaCalendarDate()}))}
  catch(error){console.warn("[CN] daily signal snapshot could not be persisted",error)}
 }
 function sendFrame(frame,payload){try{frame?.contentWindow?.postMessage(payload,location.origin)}catch(_){}}
@@ -100,13 +102,14 @@ async function refreshSignals(){
  const token=++signalRefreshToken;signalRefreshController?.abort();
  const request=new AbortController();signalRefreshController=request;
  try{
-  const [summary,stocks,today]=await Promise.all(["summary.json","universe.json","signals.json"].map(n=>fetch(DATA+n,{cache:"no-store",signal:request.signal}).then(r=>{if(!r.ok)throw new Error("data "+n+" unavailable");return r.json()})));
+  const [summary,stocks,today,previous]=await Promise.all(["summary.json","universe.json","signals.json","signals.previous.json"].map(n=>fetch(DATA+n,{cache:"no-store",signal:request.signal}).then(r=>{if(!r.ok)throw new Error("data "+n+" unavailable");return r.json()})));
   if(destroyed||token!==signalRefreshToken)return null;
-  if(!summary?.market_date||!/^\d{4}-\d{2}-\d{2}$/.test(summary.market_date)||!Array.isArray(stocks)||!Array.isArray(today))throw new Error("CN market snapshot incomplete");
+  if(!summary?.market_date||!/^\d{4}-\d{2}-\d{2}$/.test(summary.market_date)||!Array.isArray(stocks)||!Array.isArray(today)||!Array.isArray(previous)||!summary.previous_market_date)throw new Error("CN market snapshot incomplete");
   const eligible=new Set(stocks.map(x=>x?.symbol).filter(Boolean));
   if(today.some(x=>!x||x.confirmation_date!==summary.market_date||!eligible.has(x.symbol)))throw new Error("CN daily signal snapshot failed validation");
+  if(previous.some(x=>!x||x.confirmation_date!==summary.previous_market_date||!eligible.has(x.symbol)))throw new Error("CN previous-session signal snapshot failed validation");
   if(activeSignalDate&&summary.market_date<activeSignalDate)return summary;
-  const snapshot={market_date:summary.market_date,universe:stocks,signals:today};
+  const snapshot={market_date:summary.market_date,previous_market_date:summary.previous_market_date,universe:stocks,signals:today,previous_signals:previous};
   if(activeSignalDate===summary.market_date&&activeSignalSnapshot&&JSON.stringify(snapshot)===JSON.stringify(activeSignalSnapshot))return summary;
   persistSignalSnapshot(snapshot);applySignalSnapshot(snapshot);
   return summary;
