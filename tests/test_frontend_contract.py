@@ -49,7 +49,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('<span class="period">1D</span>',self.tf);self.assertIn('timeframe:"1D"',self.app)
   self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.logo);self.assertIn("VEGAS_LOGO_SET_SYMBOL",self.app)
  def test_cards_and_signal_flow(self):
-  self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("No change",self.ticker)
+  self.assertIn("confirmation_date!==summary.market_date",self.app);self.assertIn("VEGAS_CARD_SELECT",self.app);self.assertIn("▰ 当日无信号 ▰",self.ticker);self.assertNotIn("No change",self.ticker)
  def test_daily_signal_snapshot_is_shared_and_persistent(self):
   for marker in ('SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1"',"readSignalSnapshot()","persistSignalSnapshot(snapshot)","summary.market_date<activeSignalDate","activeSignalSnapshot","JSON.stringify(snapshot)===JSON.stringify(activeSignalSnapshot)","applySignalSnapshot(snapshot)","confirmation_date!==summary.market_date"):
    self.assertIn(marker,self.app)
@@ -57,11 +57,9 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn(r"/^\d{4}-\d{2}-\d{2}$/",self.app)
   self.assertIn('if(!activeSignalDate)ticker.render([],"unavailable")',self.app)
   self.assertIn('"signals.previous.json"',self.app)
-  self.assertIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
-  self.assertIn('next.length?"ready":"previous"',self.app)
-  self.assertIn('"▰ 上次扫描 ▰   "',self.ticker)
+  self.assertIn('ticker.render(next,"ready")',self.app);self.assertNotIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
+  self.assertNotIn('next.length?"ready":"previous"',self.app)
   self.assertIn("cn-live-market-20261117-5",self.index)
-  self.assertIn("cn-signal-previous-20261117-1",self.app)
   self.assertIn("value.checked_on!==chinaCalendarDate()",self.app)
  def test_fullscreen_panel_geometry(self):
   for x in ("#kline-host","#rolling-cards-frame","#signal-ticker","safe-area-inset-bottom"):self.assertIn(x,self.media)
@@ -148,7 +146,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("daily scan is not published yet",self.app)
   self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
  def test_five_minute_live_market_refresh_only_updates_signal_carousel_symbols(self):
-  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh())","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()","function millisecondsUntilNextMarketRefresh()","if(isChinaTradingSession())return 300000","[[9,30],[13,0]]","now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute)"):
+  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh())","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()","function millisecondsUntilNextMarketRefresh()","if(isChinaTradingSession())return 300000-(Date.now()%300000)","[[9,30],[13,0]]","now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute)"):
    self.assertIn(marker,self.app)
   self.assertIn("millisecondsUntilNextMarketRefresh()",self.app[self.app.index("function scheduleMarketRefresh()"):self.app.index("function startForegroundTimers()")])
   self.assertIn("liveQuoteBySymbol.get(item.symbol)",self.app)
