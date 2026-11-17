@@ -191,6 +191,22 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
   if(!symbol||!canWork())return false;
   return select(symbol,selectedExpectedDate);
  }
+ function updateLiveQuote(quote){
+  if(!quote||quote.symbol!==symbol||!canWork()||!candles.length)return false;
+  const t=Date.parse(String(quote.date||"")+"T00:00:00Z"),price=Number(quote.price);
+  if(!Number.isFinite(t)||t<=0||!Number.isFinite(price)||price<=0)return false;
+  const last=candles[candles.length-1];if(last.t>t)return false;
+  const next={...last};
+  if(last.t<t){
+   const open=Number(quote.open)||Number(quote.previousClose)||price;
+   next.t=t;next.o=open;next.h=Math.max(open,price,Number(quote.high)||price);
+   next.l=Math.min(open,price,Number(quote.low)||price);next.c=price;candles=boundedMerge(candles,[next]);
+  }else{
+   next.h=Math.max(last.h,price,Number(quote.high)||price);next.l=Math.min(last.l,price,Number(quote.low)||price);
+   next.c=price;candles=candles.slice(0,-1).concat(next);
+  }
+  render(candles,selection,historyComplete,"live-quote");return true;
+ }
  function setExpectedLastDate(value){selectedExpectedDate=String(value||"")}
  function suspend(){
   paused=true;
@@ -203,5 +219,5 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
   inflight.clear();activeRequest=null;
   if(dbp)dbp.then(db=>db?.close()).catch(()=>{});
  }
- return Object.freeze({select,refresh,setExpectedLastDate,resume,suspend,destroy,get state(){return Object.freeze({symbol,timeframe:TIMEFRAME,count:candles.length,historyComplete})}});
+ return Object.freeze({select,refresh,updateLiveQuote,setExpectedLastDate,resume,suspend,destroy,get state(){return Object.freeze({symbol,timeframe:TIMEFRAME,count:candles.length,historyComplete})}});
 }

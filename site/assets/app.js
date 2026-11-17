@@ -4,15 +4,17 @@ import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-2026
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-signal-previous-20261117-1";
 import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
+import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-1";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
-let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null;
+let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false;
 const interactionLocks=new Set();let rotationPaused=false,rotationPause=null;
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",SIGNAL_CHECK_KEY="cn-daily-snapshot-checked-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
 const host=$("kline-host"),chart=createV6KlineView({host,onInteractionChange:setInteractionLock});
 const controller=createTencentKlineController({frame:{contentWindow:chart},isHidden,onState:s=>{if(s.status==="request-failed")console.warn("[CN Tencent K-line]",s)}});
 const ticker=createSignalTicker({container:$("signal-ticker"),track:$("signal-track")});
+const liveQuotes=createTencentLiveQuotes();
 lifecycle.listen(window,"unhandledrejection",event=>console.error("[VEGAS CN unhandled rejection]",event.reason));
 lifecycle.listen(window,"error",event=>console.error("[VEGAS CN runtime error]",event.message,event.filename,event.lineno));
 function createNonRepeatingQueue(items){
@@ -126,7 +128,7 @@ async function boot(){
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
  try{await refreshSignals()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
- if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();
+ if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();void refreshLiveMarket();
 }
 async function refreshDailySnapshot(){
  if(destroyed||isHidden()||chinaMinutesOfDay()<995||dailyCheckCompleted())return true;
@@ -152,16 +154,42 @@ function scheduleDailyRetry(){
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
  dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},300000);
 }
-function stopForegroundTimers(){if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);dailyRefreshTimer=null}
+function stopForegroundTimers(){if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);dailyRefreshTimer=marketRefreshTimer=null}
+function isChinaTradingSession(){
+ const t=chinaClock(),day=new Date(Date.UTC(t.year,t.month-1,t.day)).getUTCDay(),minutes=t.hour*60+t.minute;
+ return day>=1&&day<=5&&((minutes>=570&&minutes<690)||(minutes>=780&&minutes<900));
+}
+async function refreshLiveMarket(){
+ if(destroyed||isHidden()||!isChinaTradingSession()||marketRefreshBusy)return false;
+ const rows=window.__CN_CARD_DATA__;
+ if(!Array.isArray(rows)||typeof window.updateQuotes!=="function")return false;
+ marketRefreshBusy=true;
+ try{
+  await controller.refresh();
+  const updates=await liveQuotes.read(rows);
+  if(destroyed||isHidden()||!updates.length)return false;
+  window.updateQuotes(updates);
+  const current=updates.find(row=>rows[row[0]]?.symbol===controller.state.symbol);
+  if(current){const card=rows[current[0]];controller.updateLiveQuote({symbol:card.symbol,date:chinaCalendarDate(),price:current[1],previousClose:current[2]})}
+  return true;
+ }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent quote refresh failed",error);return false}
+ finally{marketRefreshBusy=false}
+}
+function scheduleMarketRefresh(){
+ if(destroyed||isHidden())return;
+ if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);
+ marketRefreshTimer=setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000);
+}
 function startForegroundTimers(){
  if(destroyed||isHidden())return;
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
  dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},millisecondsUntilDailyRefresh());
+ if(marketRefreshTimer===null)scheduleMarketRefresh();
 }
 function suspendRuntime(){if(destroyed)return;document.documentElement.classList.add("page-hidden");stopCarousel();stopForegroundTimers();signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;interactionLocks.clear();controller.suspend();ticker.setPaused(true)}
 async function resumeRuntime(){
  if(destroyed||isHidden())return;
- document.documentElement.classList.remove("page-hidden");ticker.setPaused(false);startForegroundTimers();void refreshDailySnapshot();
+ document.documentElement.classList.remove("page-hidden");ticker.setPaused(false);startForegroundTimers();void refreshDailySnapshot();void refreshLiveMarket();
  if(!signalStocks.length){await controller.resume({refresh:false});return}
  carouselIndex=carouselIndex%signalStocks.length;
  const item=signalStocks[carouselIndex],market=universe.find(s=>s.symbol===item.symbol),token=++transitionToken;

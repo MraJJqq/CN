@@ -9,6 +9,7 @@ class CNFrontendContractTests(unittest.TestCase):
   cls.logo=(ROOT/"site/assets/modules/logo/logo.js").read_text(encoding="utf-8");cls.tf=(ROOT/"site/assets/modules/timeframe-switch/index.html").read_text(encoding="utf-8")
   cls.ticker=(ROOT/"site/assets/modules/signal-ticker/ticker.js").read_text(encoding="utf-8");cls.kline=(ROOT/"site/assets/kline/tencent-kline-controller.js").read_text(encoding="utf-8")
   cls.scanner=(ROOT/"scripts/a_share_cache.py").read_text(encoding="utf-8")
+  cls.live_quotes=(ROOT/"site/assets/quotes/tencent-live-quotes.js").read_text(encoding="utf-8")
   cls.kline_controller=(ROOT/"site/assets/kline/tencent-kline-controller.js").read_text(encoding="utf-8")
  def test_seven_systems_are_hosted(self):
   for x in ('id="kline-host"','id="logo-frame"','id="timeframe-frame"','id="rolling-cards-frame"','id="signal-ticker"'):self.assertIn(x,self.index)
@@ -146,6 +147,13 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("},300000)",self.app)
   self.assertIn("daily scan is not published yet",self.app)
   self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
+ def test_five_minute_live_market_refresh_is_separate_from_daily_signal_scan(self):
+  for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},300000)","await controller.refresh()","liveQuotes.read(rows)","controller.updateLiveQuote","isChinaTradingSession()"):
+   self.assertIn(marker,self.app)
+  for marker in ('ENDPOINT="https://qt.gtimg.cn/q="',"BATCH_SIZE=50","f[3]","f[4]","f[12]","f[13]"):
+   self.assertIn(marker,self.live_quotes)
+  self.assertIn("updateLiveQuote(quote)",self.kline_controller)
+  self.assertIn('"live-quote"',self.kline_controller)
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
   self.assertIn("if(dbp)dbp.then(db=>db?.close()).catch(()=>{});",self.kline_controller)
 
