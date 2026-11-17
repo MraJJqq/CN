@@ -1,13 +1,15 @@
 import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
 page.on("pageerror",e=>errors.push(e.message));
+page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
+page.on("requestfailed",r=>errors.push("request failed: "+r.url()+" "+(r.failure()?.errorText||"")));
 try{
  await page.goto("http://127.0.0.1:8765/",{waitUntil:"domcontentloaded"});
  await page.bringToFront();
  await page.waitForFunction(()=>document.visibilityState==="visible",{timeout:10000});
  await page.waitForFunction(()=>typeof window.setCardOrder==="function",{timeout:30000});
  await page.waitForFunction(()=>window.__CN_READY__===true,{timeout:30000});
- await page.waitForFunction(()=>typeof window.__CN_CARD_SNAPSHOT_AT__==="number",{timeout:15000});
+ await page.waitForFunction(()=>typeof window.__CN_CARD_SNAPSHOT_AT__==="number",{timeout:15000}).catch(async error=>{const state=await page.evaluate(()=>({ready:window.__CN_READY__,cardSnapshotAt:window.__CN_CARD_SNAPSHOT_AT__??null,cardDataReady:typeof window.__CN_CARD_DATA_READY__,cardDataCount:Array.isArray(window.__CN_CARD_DATA__)?window.__CN_CARD_DATA__.length:null,updateQuotes:typeof window.updateQuotes,setCardOrder:typeof window.setCardOrder,signalTrack:document.querySelector("#signal-track")?.textContent||"",scripts:[...document.scripts].map(x=>x.src)}));throw new Error("CN card snapshot initialization timed out: "+JSON.stringify({state,errors})+"; "+error.message)});
  await page.waitForFunction(()=>["#logo-frame","#timeframe-frame","#rolling-cards-frame"].every(s=>{const e=document.querySelector(s);return e?.classList.contains("is-ready")&&Number(getComputedStyle(e).opacity)>=0.99}),{timeout:15000});
  const data=await page.evaluate(async()=>{
   const [summary,universe,signals]=await Promise.all(["summary.json","universe.json","signals.json"].map(async n=>{const r=await fetch("./data/"+n);if(!r.ok)throw new Error(n+" unavailable");return r.json()}));
