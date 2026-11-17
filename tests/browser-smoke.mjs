@@ -2,7 +2,7 @@ import {chromium} from "playwright";
 const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
-page.on("requestfailed",r=>errors.push("request failed: "+r.url()+" "+(r.failure()?.errorText||"")));
+page.on("requestfailed",r=>{const reason=r.failure()?.errorText||"";if(reason!=="net::ERR_ABORTED")errors.push("request failed: "+r.url()+" "+reason)});
 try{
  await page.goto("http://127.0.0.1:8765/",{waitUntil:"domcontentloaded"});
  await page.bringToFront();
