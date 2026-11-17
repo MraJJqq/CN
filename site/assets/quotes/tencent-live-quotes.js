@@ -16,12 +16,9 @@ function loadQuote(symbol){
  });
 }
 export function createTencentLiveQuotes(){
- let sequence=0;
  async function read(symbol){
-  const token=++sequence;
   if(typeof symbol!=="string"||!/^(sh|sz|bj)\d{6}$/.test(symbol))return null;
-  const quote=await loadQuote(symbol);
-  return token===sequence?quote:null;
+  return loadQuote(symbol);
  }
  return Object.freeze({read});
 }
