@@ -4,10 +4,10 @@ import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-2026
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-signal-previous-20261117-1";
 import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
-import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-4";
+import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-5";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
-let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false;
+let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false,liveQuoteBySymbol=new Map();
 const interactionLocks=new Set();let rotationPaused=false,rotationPause=null;
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",SIGNAL_CHECK_KEY="cn-daily-snapshot-checked-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
@@ -44,7 +44,7 @@ function readSignalSnapshot(){
 function applySignalSnapshot(snapshot){
  activeSignalDate=snapshot.market_date;activeSignalSnapshot=snapshot;universe=snapshot.universe;
  const next=snapshot.signals;
- signalStocks=createNonRepeatingQueue(next);ticker.render(next.length?next:snapshot.previous_signals,next.length?"ready":"previous");
+ signalStocks=createNonRepeatingQueue(next);const activeSymbols=new Set(signalStocks.map(x=>x.symbol));for(const symbol of liveQuoteBySymbol.keys())if(!activeSymbols.has(symbol))liveQuoteBySymbol.delete(symbol);ticker.render(next.length?next:snapshot.previous_signals,next.length?"ready":"previous");
  if(typeof window.setCardOrder==="function"){
   if(!window.setCardOrder(signalStocks.map(x=>x.symbol)))console.error("[CN] card order rejected");
   else $("rolling-cards-frame").classList.add("is-ready");
@@ -80,7 +80,7 @@ async function transitionToIndex(index,{initial=false}={}){
  const loaded=await controller.select(item.symbol,market?.last_date||"");if(destroyed||token!==transitionToken)return;
  const state=controller.state;
  if(!loaded&&!(state.symbol===item.symbol&&state.count>0)){cancelLogoTransition();$("app").classList.remove("is-symbol-transitioning");console.warn("[CN] Tencent chart not ready",item.symbol);scheduleNext();return}
- sendLogo(item,market);$("app").classList.remove("is-symbol-transitioning");
+ const liveQuote=liveQuoteBySymbol.get(item.symbol);if(liveQuote?.date===chinaCalendarDate())controller.updateLiveQuote(liveQuote);sendLogo(item,market);$("app").classList.remove("is-symbol-transitioning");
  transitionTimer=setTimeout(()=>{transitionTimer=null;if(token===transitionToken)scheduleNext()},1500);
 }
 async function refreshCards({force=false}={}){
@@ -161,15 +161,24 @@ function isChinaTradingSession(){
 }
 async function refreshLiveMarket(){
  if(destroyed||isHidden()||!isChinaTradingSession()||marketRefreshBusy)return false;
- const symbol=controller.state.symbol;
- if(!symbol)return false;
- marketRefreshBusy=true;
+ const symbols=[...new Set(signalStocks.map(item=>item.symbol).filter(Boolean))];
+ if(!symbols.length)return false;
+ marketRefreshBusy=true;let refreshed=0;
  try{
-  const quote=await liveQuotes.read(symbol);
-  if(destroyed||isHidden()||!quote)return false;
-  return controller.updateLiveQuote({...quote,date:chinaCalendarDate()});
- }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent K-line quote refresh failed",error);return false}
- finally{marketRefreshBusy=false}
+  for(const symbol of symbols){
+   if(destroyed||isHidden()||!isChinaTradingSession())break;
+   try{
+    const quote=await liveQuotes.read(symbol);
+    if(destroyed||isHidden())break;
+    if(!quote)continue;
+    const datedQuote={...quote,date:chinaCalendarDate()};
+    if(!signalStocks.some(item=>item.symbol===symbol))continue;
+    liveQuoteBySymbol.set(symbol,datedQuote);refreshed++;
+    if(controller.state.symbol===symbol)controller.updateLiveQuote(datedQuote);
+   }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent signal K-line quote failed",symbol,error)}
+  }
+  return refreshed>0;
+ }finally{marketRefreshBusy=false}
 }
 function scheduleMarketRefresh(){
  if(destroyed||isHidden())return;
