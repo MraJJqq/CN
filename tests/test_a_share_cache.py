@@ -134,7 +134,11 @@ class AShareSignalRuleTests(unittest.TestCase):
   dates=pd.date_range("2026-11-09",periods=len(closes),freq="B")
   bars=pd.DataFrame({"date":dates,"open":closes,"high":[x+0.5 for x in closes],"low":[x-0.5 for x in closes],"close":closes,"volume":[1000]*len(closes),"amount":[100000]*len(closes)})
   def fake_ema(values,period):
-   selected=ema12 if period==12 else mid if period in (144,169) else red
+   if period==12:selected=ema12
+   elif period==144:selected=[mid[0]]*len(values)
+   elif period==169:selected=[mid[1]]*len(values)
+   elif period==576:selected=[red[0]]*len(values)
+   else:selected=[red[1]]*len(values)
    return pd.Series(selected,index=values.index,dtype=float)
   with patch("scripts.a_share_cache.fetch_cached",return_value=(bars,{})),patch("scripts.a_share_cache.ema",side_effect=fake_ema):
    return analyze_one({"symbol":"sh600000","name":"浦发银行"},dates[-1].date().isoformat(),"unused")
