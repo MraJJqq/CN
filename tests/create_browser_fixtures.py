@@ -21,7 +21,7 @@ signals=[{"symbol":selected["symbol"],"code":selected["code"],"name":selected["n
 data=ROOT/"site/data";(data/"charts").mkdir(parents=True,exist_ok=True)
 def write(name,value):(data/name).write_text(json.dumps(value,ensure_ascii=False),encoding="utf-8")
 write("cards.json",cards)
-write("summary.json",{"market_date":market_date,"universe_size":500,"eligible_count":1,"fetch_error_count":0})
+write("summary.json",{"market_date":market_date,"previous_market_date":"2026-11-06","universe_size":500,"eligible_count":1,"fetch_error_count":0,"today_signal_count":1,"previous_signal_count":0})
 write("universe.json",universe);write("signals.json",signals);write("signals.previous.json",[])
 write("trading-calendar.json",{"trading_days":["2026-11-10","2026-11-11"]})
 bars=[]
