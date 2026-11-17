@@ -26,7 +26,7 @@ function readSignalSnapshot(){
  try{
   const raw=localStorage.getItem(SIGNAL_SNAPSHOT_KEY);if(!raw)return null;
   const value=JSON.parse(raw);
-  if(!value||typeof value.market_date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value.market_date)||value.checked_on!==chinaCalendarDate()||!Array.isArray(value.universe)||!Array.isArray(value.signals)||!Array.isArray(value.previous_signals))return null;
+  if(!value||typeof value.market_date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value.market_date)||value.checked_on!==chinaCalendarDate()||!Array.isArray(value.universe)||!Array.isArray(value.signals)||!Array.isArray(value.previous_signals)){localStorage.removeItem(SIGNAL_SNAPSHOT_KEY);return null}
   const symbols=new Set(value.universe.map(x=>x?.symbol).filter(Boolean));
   if(value.signals.some(x=>!x||x.confirmation_date!==value.market_date||!symbols.has(x.symbol)))return null;
   if(value.previous_signals.some(x=>!x||x.confirmation_date!==value.previous_market_date||!symbols.has(x.symbol)))return null;
