@@ -5,16 +5,14 @@ from __future__ import annotations
 import gzip
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 try:
-    from .a_share_cache import latest_completed_session
-    from .trading_calendar import china_today, previous_a_share_trading_day
+    from .trading_calendar import china_today, is_a_share_trading_day, previous_a_share_trading_day
 except ImportError:
-    from a_share_cache import latest_completed_session
-    from trading_calendar import china_today, previous_a_share_trading_day
+    from trading_calendar import china_today, is_a_share_trading_day, previous_a_share_trading_day
 
 
 REQUIRED_FILES = (
@@ -128,7 +126,14 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    expected = latest_completed_session(china_today(), now).isoformat()
+    run_date = china_today()
+    expected_session = (
+        run_date
+        if is_a_share_trading_day(run_date)
+        and now.time().replace(tzinfo=None) >= dt_time(15, 30)
+        else previous_a_share_trading_day(run_date)
+    )
+    expected = expected_session.isoformat()
     result = validate_payload(root / "site" / "data", expected_market_date=expected)
     print(
         "Pages payload verified: "
