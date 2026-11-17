@@ -182,7 +182,7 @@ async function refreshLiveMarket(){
 }
 function millisecondsUntilNextMarketRefresh(){
  if(isChinaTradingSession())return 300000;
- const t=chinaClock(),now=Date.now(),base=Date.UTC(t.year,t.month-1,t.day);
+ const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),base=Date.UTC(t.year,t.month-1,t.day);
  for(let offset=0;offset<8;offset++){
   const day=new Date(base+offset*86400000),weekday=day.getUTCDay();
   if(weekday===0||weekday===6)continue;
