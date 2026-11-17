@@ -24,7 +24,8 @@ function createNonRepeatingQueue(items){
 function chinaCalendarDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function chinaClock(){const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());return Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]))}
 function chinaMinutesOfDay(){const t=chinaClock();return t.hour*60+t.minute}
-function millisecondsUntilDailyRefresh(){const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),target=Date.UTC(t.year,t.month-1,t.day,16,35);return Math.max(1000,target>now?target-now:target+86400000-now)}
+function millisecondsUntilDailyRefresh(){const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),target=Date.UTC(t.year,t.month-1,t.day,16,35);if(!dailyCheckCompleted()&&now>=target)return 1000;return Math.max(1000,target>now?target-now:target+86400000-now)}
+function isTodayPublishedSnapshot(summary){if(!summary||typeof summary.generated_at_utc!=="string")return false;const generated=new Date(summary.generated_at_utc);if(!Number.isFinite(generated.getTime()))return false;return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(generated)===chinaCalendarDate()}
 function dailyCheckCompleted(){try{return localStorage.getItem(SIGNAL_CHECK_KEY)===chinaCalendarDate()}catch(_){return false}}
 function markDailyCheckCompleted(){try{localStorage.setItem(SIGNAL_CHECK_KEY,chinaCalendarDate())}catch(_){}}
 function readSignalSnapshot(){
@@ -124,19 +125,38 @@ async function refreshSignals(){
 async function boot(){
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
- try{const summary=await refreshSignals();if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
+ try{await refreshSignals()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
  if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();
 }
 async function refreshDailySnapshot(){
- if(destroyed||isHidden()||chinaMinutesOfDay()<995||dailyCheckCompleted())return;
- try{const summary=await refreshSignals();if(!summary)return;await refreshCards({force:true});await controller.refresh();markDailyCheckCompleted();console.info("[CN] daily market snapshot refreshed",summary.market_date)}
- catch(error){console.warn("[CN] daily market snapshot refresh failed",error)}
+ if(destroyed||isHidden()||chinaMinutesOfDay()<995||dailyCheckCompleted())return true;
+ try{
+  const summary=await refreshSignals();
+  if(!isTodayPublishedSnapshot(summary)){console.info("[CN] daily scan is not published yet; will check again without starting another scan");return false}
+  const cardsUpdated=await refreshCards({force:true});
+  if(!cardsUpdated){console.warn("[CN] daily cards are not ready; waiting for the published snapshot");return false}
+  await controller.refresh();markDailyCheckCompleted();console.info("[CN] daily market snapshot refreshed",summary.market_date);return true;
+ }catch(error){console.warn("[CN] daily market snapshot refresh failed; will retry status check",error);return false}
+}
+function scheduleDailyCheck(){
+ if(destroyed||isHidden()||dailyCheckCompleted())return;
+ if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
+ const minutes=chinaMinutesOfDay();
+ if(minutes<995){startForegroundTimers();return}
+ if(minutes>=1260){startForegroundTimers();return}
+ dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},1000);
+}
+function scheduleDailyRetry(){
+ if(destroyed||isHidden()||dailyCheckCompleted())return;
+ if(chinaMinutesOfDay()>=1260){startForegroundTimers();return}
+ if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
+ dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},300000);
 }
 function stopForegroundTimers(){if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);dailyRefreshTimer=null}
 function startForegroundTimers(){
  if(destroyed||isHidden())return;
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
- dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().finally(()=>{if(!destroyed&&!isHidden())startForegroundTimers()})},millisecondsUntilDailyRefresh());
+ dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},millisecondsUntilDailyRefresh());
 }
 function suspendRuntime(){if(destroyed)return;document.documentElement.classList.add("page-hidden");stopCarousel();stopForegroundTimers();signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;interactionLocks.clear();controller.suspend();ticker.setPaused(true)}
 async function resumeRuntime(){
