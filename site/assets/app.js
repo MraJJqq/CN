@@ -44,7 +44,7 @@ function readSignalSnapshot(){
 function applySignalSnapshot(snapshot){
  activeSignalDate=snapshot.market_date;activeSignalSnapshot=snapshot;universe=snapshot.universe;
  const next=snapshot.signals;
- signalStocks=createNonRepeatingQueue(next);const activeSymbols=new Set(signalStocks.map(x=>x.symbol));for(const symbol of liveQuoteBySymbol.keys())if(!activeSymbols.has(symbol))liveQuoteBySymbol.delete(symbol);ticker.render(next.length?next:snapshot.previous_signals,next.length?"ready":"previous");
+ signalStocks=createNonRepeatingQueue(next);const activeSymbols=new Set(signalStocks.map(x=>x.symbol));for(const symbol of liveQuoteBySymbol.keys())if(!activeSymbols.has(symbol))liveQuoteBySymbol.delete(symbol);ticker.render(next,"ready");
  if(typeof window.setCardOrder==="function"){
   if(!window.setCardOrder(signalStocks.map(x=>x.symbol)))console.error("[CN] card order rejected");
   else $("rolling-cards-frame").classList.add("is-ready");
@@ -163,20 +163,34 @@ async function refreshLiveMarket(){
  if(destroyed||isHidden()||!isChinaTradingSession()||marketRefreshBusy)return false;
  const symbols=[...new Set(signalStocks.map(item=>item.symbol).filter(Boolean))];
  if(!symbols.length)return false;
- marketRefreshBusy=true;let refreshed=0;
+ marketRefreshBusy=true;let refreshed=0,failed=0,nextIndex=0;
+ const startedAt=performance.now();
+ const concurrency=Math.min(4,symbols.length);
  try{
-  for(const symbol of symbols){
-   if(destroyed||isHidden()||!isChinaTradingSession())break;
-   try{
-    const quote=await liveQuotes.read(symbol);
-    if(destroyed||isHidden())break;
-    if(!quote)continue;
-    const datedQuote={...quote,date:chinaCalendarDate()};
-    if(!signalStocks.some(item=>item.symbol===symbol))continue;
-    liveQuoteBySymbol.set(symbol,datedQuote);refreshed++;
-    if(controller.state.symbol===symbol)controller.updateLiveQuote(datedQuote);
-   }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent signal K-line quote failed",symbol,error)}
-  }
+  const worker=async()=>{
+   while(true){
+    const index=nextIndex++;
+    if(index>=symbols.length||destroyed||isHidden()||!isChinaTradingSession())return;
+    const symbol=symbols[index];
+    try{
+     const quote=await liveQuotes.read(symbol);
+     if(destroyed||isHidden())return;
+     if(!quote)continue;
+     const datedQuote={...quote,date:chinaCalendarDate()};
+     if(!signalStocks.some(item=>item.symbol===symbol))continue;
+     liveQuoteBySymbol.set(symbol,datedQuote);refreshed++;
+     if(controller.state.symbol===symbol)controller.updateLiveQuote(datedQuote);
+    }catch(error){
+     failed++;
+     if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent signal K-line quote failed",symbol,error);
+    }
+   }
+  };
+  await Promise.all(Array.from({length:concurrency},()=>worker()));
+  console.info("[CN] five-minute signal K-line refresh",{
+   total:symbols.length,success:refreshed,failed,
+   duration_ms:Math.round(performance.now()-startedAt),concurrency
+  });
   return refreshed>0;
  }finally{marketRefreshBusy=false}
 }
