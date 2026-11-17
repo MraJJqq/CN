@@ -135,7 +135,12 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("window.__CN_CARD_DATA_READY__",self.app)
   self.assertIn("refreshCards({force:true})",self.app)
   self.assertIn("if(force||!Array.isArray(rows))",self.app)
-  self.assertIn("lifecycle.interval(()=>{if(!isHidden())void refreshCards({force:true})},300000)",self.app)
+  self.assertIn("dailyRefreshTimer=setTimeout(",self.app)
+  self.assertIn("millisecondsUntilDailyRefresh()",self.app)
+  self.assertIn("chinaMinutesOfDay()<995",self.app)
+  self.assertNotIn("lifecycle.interval(",self.app)
+  self.assertNotIn("60000)",self.app)
+  self.assertNotIn("300000)",self.app)
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
   self.assertIn("if(dbp)dbp.then(db=>db?.close()).catch(()=>{});",self.kline_controller)
 

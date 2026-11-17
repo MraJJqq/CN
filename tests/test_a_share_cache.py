@@ -8,7 +8,8 @@ from datetime import date,datetime
 from zoneinfo import ZoneInfo
 from unittest.mock import patch
 from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days,exchange_closed_days
-from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session
+from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session,build_scan_diagnostics
+from scripts.push_signals import bark_marker_path,notification_already_sent,record_notification_sent
 from scripts.a_share_cache import to_tencent_symbol,parse_tencent_quote_text,merge_frames,through_date,valid_bars,excluded_name,ema,normalize
 from scripts.validate_pages_payload import validate_payload
 
@@ -100,6 +101,26 @@ class TencentCacheTests(unittest.TestCase):
    self.assertTrue(info["complete"])
    self.assertEqual(len(pd.read_csv(data,compression="gzip")),1)
    self.assertTrue(json.loads(meta.read_text(encoding="utf-8"))["complete"])
+
+class ScanDiagnosticsTests(unittest.TestCase):
+ def test_scan_diagnostics_report_freshness_and_stale_history(self):
+  with tempfile.TemporaryDirectory() as directory:
+   Path(directory,"sh600000.meta.json").write_text("{}",encoding="utf-8")
+   result=build_scan_diagnostics([{"last_date":"2026-11-16"},{"last_date":"2026-11-13"}],[{"reason":"stale_history"},{"reason":"ST_or_delisted_name"}],directory,0)
+   self.assertEqual(result["stale_history_count"],1)
+   self.assertEqual(result["oldest_eligible_data_date"],"2026-11-13")
+   self.assertEqual(result["latest_eligible_data_date"],"2026-11-16")
+   self.assertEqual(result["cache_symbol_count"],1)
+   self.assertGreaterEqual(result["scan_duration_seconds"],0)
+
+class BarkDeduplicationTests(unittest.TestCase):
+ def test_daily_marker_prevents_duplicate_notification(self):
+  with tempfile.TemporaryDirectory() as directory:
+   self.assertFalse(notification_already_sent("2026-11-16",directory))
+   marker=record_notification_sent("2026-11-16",3,directory)
+   self.assertTrue(marker.exists())
+   self.assertTrue(notification_already_sent("2026-11-16",directory))
+   self.assertFalse(notification_already_sent("2026-11-17",directory))
 
 class TencentNameParserTests(unittest.TestCase):
  def test_parse_tencent_quote_text(self):
