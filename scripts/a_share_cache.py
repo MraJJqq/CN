@@ -190,7 +190,7 @@ def main():
    g,p,e=f.result();good.extend(g);passed.extend(p);errors.extend(e)
  require_complete_fetch(errors)
  if not good:raise RuntimeError("No CN500 stock passed Tencent cache/data-quality checks; refusing empty publish")
- good.sort(key=lambda x:x["symbol"]);all_signals=[s for x in good for s in x["signals"]];market_date=max((x["last_date"] for x in good),default="");market_dates=sorted({bar[0] for x in good for bar in x["chart_bars"]});previous_market_date=max((d for d in market_dates if d<market_date),default="");today=[s for s in all_signals if s["confirmation_date"]==market_date];previous=[s for s in all_signals if s["confirmation_date"]==previous_market_date]
+ good.sort(key=lambda x:x["symbol"]);all_signals=[s for x in good for s in x["signals"]];market_date=max((x["last_date"] for x in good),default="");previous_market_date=previous_a_share_trading_day(date.fromisoformat(market_date)).isoformat() if market_date else "";today=[s for s in all_signals if s["confirmation_date"]==market_date];previous=[s for s in all_signals if s["confirmation_date"]==previous_market_date]
  data=Path("site/data");charts=data/"charts";charts.mkdir(parents=True,exist_ok=True)
  for p in list(charts.glob("*.json"))+list(charts.glob("*.json.gz")):p.unlink()
  for x in good:

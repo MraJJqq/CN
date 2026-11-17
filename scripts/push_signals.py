@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.request
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -34,10 +34,23 @@ def format_bark_body(names: list[str], line_width: int = BARK_LINE_WIDTH) -> str
 
 
 def main() -> int:
-    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    today = now.date()
     if not is_a_share_trading_day(today):
         print(f"{today.isoformat()} is not an A-share trading day; Bark push skipped.")
         return 0
+    if now.time().replace(tzinfo=None) < dt_time(15, 30):
+        print("A-share market has not closed; Bark push skipped.")
+        return 0
+
+    summary = json.loads(Path("site/data/summary.json").read_text(encoding="utf-8"))
+    expected_market_date = today.isoformat()
+    if summary.get("market_date") != expected_market_date:
+        raise RuntimeError(
+            "Refusing stale CN Bark payload: "
+            f"expected market_date={expected_market_date}, "
+            f"got {summary.get('market_date')!r}"
+        )
 
     key = os.environ.get("BARK_KEY", "").strip()
     if not key:
@@ -45,6 +58,11 @@ def main() -> int:
         return 0
 
     rows = json.loads(Path("site/data/signals.json").read_text(encoding="utf-8"))
+    if not isinstance(rows, list) or any(
+        not isinstance(row, dict) or row.get("confirmation_date") != expected_market_date
+        for row in rows
+    ):
+        raise RuntimeError("Refusing CN Bark push: signal rows do not all match today's completed market session")
     names = []
     seen = set()
     for row in rows:
