@@ -203,7 +203,7 @@ async function resumeRuntime(){
  if(destroyed||isHidden()||token!==transitionToken)return;
  const state=controller.state;
  if(!loaded&&!(state.symbol===item.symbol&&state.count>0)){cancelLogoTransition();$("app").classList.remove("is-symbol-transitioning");scheduleNext();return}
- sendLogo(item,market);$("app").classList.remove("is-symbol-transitioning");
+ const liveQuote=liveQuoteBySymbol.get(item.symbol);if(liveQuote?.date===chinaCalendarDate())controller.updateLiveQuote(liveQuote);sendLogo(item,market);$("app").classList.remove("is-symbol-transitioning");
  transitionTimer=setTimeout(()=>{transitionTimer=null;if(token===transitionToken)scheduleNext()},1500);
  }
 
