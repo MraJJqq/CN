@@ -73,6 +73,7 @@ jobs:
         env:
           BARK_KEY: ${{ secrets.A_SHARE_BARK_KEY }}
           BARK_SERVER: ${{ secrets.BARK_SERVER }}
+          BARK_DEDUPE_DIR: .cache/cn500-tencent-qfq
         run: python scripts/push_signals.py
       - name: Save Tencent cache snapshot
         if: always() && steps.scan.outcome != 'cancelled'

@@ -171,7 +171,13 @@ def write_text(path,content):
  path.parent.mkdir(parents=True,exist_ok=True);tmp=path.with_suffix(path.suffix+".tmp");tmp.write_text(content,encoding="utf-8");os.replace(tmp,path)
 def write_gzip_json(path,obj):
  path.parent.mkdir(parents=True,exist_ok=True);tmp=path.with_suffix(path.suffix+".tmp");raw=json.dumps(obj,ensure_ascii=False,separators=(",",":")).encode("utf-8");tmp.write_bytes(gzip.compress(raw,compresslevel=9,mtime=0));os.replace(tmp,path)
+def build_scan_diagnostics(good,passed,cache_dir,started_at):
+ dates=[str(x.get("last_date")) for x in good if x.get("last_date")]
+ manifests=list(Path(cache_dir).glob("*.meta.json"))
+ return {"scan_duration_seconds":round(max(0.0,time.monotonic()-started_at),2),"stale_history_count":sum(1 for x in passed if x.get("reason")=="stale_history"),"oldest_eligible_data_date":min(dates) if dates else None,"latest_eligible_data_date":max(dates) if dates else None,"cache_symbol_count":len(manifests)}
+
 def main():
+ scan_started=time.monotonic()
  ap=argparse.ArgumentParser();ap.add_argument("--universe-file",default="config/cn500.codes.gz.b64");ap.add_argument("--cache-dir",default=".cache/cn500-tencent-qfq");ap.add_argument("--workers",type=int,default=4);ap.add_argument("--as-of",default=china_today().isoformat());ap.add_argument("--out",default="results/a-share");a=ap.parse_args()
  if a.workers<1:ap.error("--workers must be positive")
  run_date=date.fromisoformat(a.as_of)
@@ -210,9 +216,10 @@ def main():
   cards.append(row)
  if len(cards)!=500 or len({x["symbol"] for x in cards})!=500:raise RuntimeError("CN500 cards output must contain exactly 500 unique symbols")
  write_text(data/"cards.json",json.dumps(cards,ensure_ascii=False,separators=(",",":")))
- summary={"generated_at_utc":datetime.now(timezone.utc).isoformat(),"source":SOURCE,"name_source":NAME_SOURCE,"adjust":"qfq","market":"沪深A股","frequency":"1D","universe_source":"CN500 verified code list","universe_size":len(symbols),"eligible_count":len(good),"passed_count":len(passed),"fetch_error_count":len(errors),"market_date":market_date,"previous_market_date":previous_market_date,"today_signal_count":len(today),"previous_signal_count":len(previous),"history_policy":"up to 10 years of Tencent daily history; data-limited stocks use all available bars","web_chart_policy":"latest 1200 bars per eligible stock; full-history signal calculation remains server-side","web_ema_policy":"EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars","cache_policy":"per-symbol gzip CSV and metadata; 14-day overlap incremental merge","warmup_policy":"request up to 10 years of Tencent daily history; use all available bars without a minimum-history rejection"}
+ diagnostics=build_scan_diagnostics(good,passed,a.cache_dir,scan_started)
+ summary={"generated_at_utc":datetime.now(timezone.utc).isoformat(),"source":SOURCE,"name_source":NAME_SOURCE,"adjust":"qfq","market":"沪深A股","frequency":"1D","universe_source":"CN500 verified code list","universe_size":len(symbols),"eligible_count":len(good),"passed_count":len(passed),"fetch_error_count":len(errors),"market_date":market_date,"previous_market_date":previous_market_date,"today_signal_count":len(today),"previous_signal_count":len(previous),"history_policy":"up to 10 years of Tencent daily history; data-limited stocks use all available bars","web_chart_policy":"latest 1200 bars per eligible stock; full-history signal calculation remains server-side","web_ema_policy":"EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars","cache_policy":"per-symbol gzip CSV and metadata; 14-day overlap incremental merge","warmup_policy":"request up to 10 years of Tencent daily history; use all available bars without a minimum-history rejection",**diagnostics}
  write_text(data/"summary.json",json.dumps(summary,ensure_ascii=False,indent=2));write_text(data/"universe.json",json.dumps(universe,ensure_ascii=False,separators=(",",":")));write_text(data/"signals.json",json.dumps(today,ensure_ascii=False,separators=(",",":")));write_text(data/"signals.previous.json",json.dumps(previous,ensure_ascii=False,separators=(",",":")) )
  out=Path(a.out);out.mkdir(parents=True,exist_ok=True);pd.DataFrame(passed).to_csv(out/"passed.csv",index=False);pd.DataFrame(errors).to_csv(out/"errors.csv",index=False);pd.DataFrame(universe).to_csv(out/"eligible.csv",index=False);write_text(out/"summary.json",json.dumps(summary,ensure_ascii=False,indent=2))
- manifest=[read_meta(p) for p in Path(a.cache_dir).glob("*.meta.json")];write_text(out/"cache-manifest.json",json.dumps({"schema_version":SCHEMA,"source":SOURCE,"adjust":"qfq","cached_symbols":len(manifest),"symbols":manifest},ensure_ascii=False,indent=2))
+ manifest=[read_meta(p) for p in Path(a.cache_dir).glob("*.meta.json")];write_text(out/"cache-manifest.json",json.dumps({"schema_version":SCHEMA,"source":SOURCE,"adjust":"qfq","cached_symbols":len(manifest),"symbols":manifest,"diagnostics":diagnostics},ensure_ascii=False,indent=2))
  print(json.dumps(summary,ensure_ascii=False,indent=2),flush=True)
 if __name__=="__main__":main()

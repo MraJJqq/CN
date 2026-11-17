@@ -6,9 +6,9 @@ import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-signal-
 import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
-let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null;
-const interactionLocks=new Set();let signalTimer=null,klineTimer=null,cardsTimer=null,rotationPaused=false,rotationPause=null;
-const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
+let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null;
+const interactionLocks=new Set();let rotationPaused=false,rotationPause=null;
+const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",SIGNAL_CHECK_KEY="cn-daily-snapshot-checked-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
 const host=$("kline-host"),chart=createV6KlineView({host,onInteractionChange:setInteractionLock});
 const controller=createTencentKlineController({frame:{contentWindow:chart},isHidden,onState:s=>{if(s.status==="request-failed")console.warn("[CN Tencent K-line]",s)}});
@@ -22,6 +22,11 @@ function createNonRepeatingQueue(items){
  try{if(queue.length)localStorage.setItem(ROTATION_START_KEY,queue[0].symbol)}catch(_){}return queue;
 }
 function chinaCalendarDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
+function chinaClock(){const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());return Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]))}
+function chinaMinutesOfDay(){const t=chinaClock();return t.hour*60+t.minute}
+function millisecondsUntilDailyRefresh(){const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),target=Date.UTC(t.year,t.month-1,t.day,16,35);return Math.max(1000,target>now?target-now:target+86400000-now)}
+function dailyCheckCompleted(){try{return localStorage.getItem(SIGNAL_CHECK_KEY)===chinaCalendarDate()}catch(_){return false}}
+function markDailyCheckCompleted(){try{localStorage.setItem(SIGNAL_CHECK_KEY,chinaCalendarDate())}catch(_){}}
 function readSignalSnapshot(){
  try{
   const raw=localStorage.getItem(SIGNAL_SNAPSHOT_KEY);if(!raw)return null;
@@ -118,23 +123,26 @@ async function refreshSignals(){
 }
 async function boot(){
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
- 
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
- try{await refreshSignals()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
- if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;
+ try{const summary=await refreshSignals();if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
+ if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();
 }
-function stopForegroundTimers(){signalTimer?.();klineTimer?.();cardsTimer?.();signalTimer=klineTimer=cardsTimer=null}
+async function refreshDailySnapshot(){
+ if(destroyed||isHidden()||chinaMinutesOfDay()<995||dailyCheckCompleted())return;
+ try{const summary=await refreshSignals();if(!summary)return;await refreshCards({force:true});await controller.refresh();markDailyCheckCompleted();console.info("[CN] daily market snapshot refreshed",summary.market_date)}
+ catch(error){console.warn("[CN] daily market snapshot refresh failed",error)}
+}
+function stopForegroundTimers(){if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);dailyRefreshTimer=null}
 function startForegroundTimers(){
  if(destroyed||isHidden())return;
- if(!signalTimer)signalTimer=lifecycle.interval(()=>{if(!isHidden())void refreshSignals().catch(e=>console.warn("[CN] signal refresh failed",e))},60000);
- if(!klineTimer)klineTimer=lifecycle.interval(()=>{if(!isHidden())void controller.refresh()},300000);
- if(!cardsTimer)cardsTimer=lifecycle.interval(()=>{if(!isHidden())void refreshCards({force:true})},300000);
+ if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
+ dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().finally(()=>{if(!destroyed&&!isHidden())startForegroundTimers()})},millisecondsUntilDailyRefresh());
 }
 function suspendRuntime(){if(destroyed)return;document.documentElement.classList.add("page-hidden");stopCarousel();stopForegroundTimers();signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;interactionLocks.clear();controller.suspend();ticker.setPaused(true)}
 async function resumeRuntime(){
  if(destroyed||isHidden())return;
- document.documentElement.classList.remove("page-hidden");ticker.setPaused(false);startForegroundTimers();void refreshCards({force:true});
- if(!signalStocks.length){await controller.resume({refresh:false});void refreshSignals().catch(error=>console.warn("[CN] signal resume refresh failed",error));return}
+ document.documentElement.classList.remove("page-hidden");ticker.setPaused(false);startForegroundTimers();void refreshDailySnapshot();
+ if(!signalStocks.length){await controller.resume({refresh:false});return}
  carouselIndex=carouselIndex%signalStocks.length;
  const item=signalStocks[carouselIndex],market=universe.find(s=>s.symbol===item.symbol),token=++transitionToken;
  $("app").classList.add("is-symbol-transitioning");sendLogoTransitionStart();
@@ -144,8 +152,8 @@ async function resumeRuntime(){
  if(!loaded&&!(state.symbol===item.symbol&&state.count>0)){cancelLogoTransition();$("app").classList.remove("is-symbol-transitioning");scheduleNext();return}
  sendLogo(item,market);$("app").classList.remove("is-symbol-transitioning");
  transitionTimer=setTimeout(()=>{transitionTimer=null;if(token===transitionToken)scheduleNext()},1500);
- void refreshSignals().catch(error=>console.warn("[CN] signal resume refresh failed",error));
-}
+ }
+
 function teardown(){if(destroyed)return;destroyed=true;signalRefreshToken++;signalRefreshController?.abort();signalRefreshController=null;stopCarousel();stopForegroundTimers();interactionLocks.clear();pageLifecycle?.destroy();rotationPause?.destroy();controller.destroy();chart.destroy();ticker.destroy();lifecycle.destroy()}
 pageLifecycle=createPageLifecycle({documentRef:document,windowRef:window,onSuspend:suspendRuntime,onResume:resumeRuntime,onPageHideFinal:teardown});
 document.documentElement.classList.toggle("page-hidden",isHidden());
