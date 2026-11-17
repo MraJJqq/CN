@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # 16:30 China Standard Time, after the A-share cash market closes.
-    - cron: "40 9 * * 1-5"
+    - cron: "30 8 * * 1-5"
 concurrency:
   group: cn-a-share-daily
   cancel-in-progress: false
