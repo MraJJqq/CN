@@ -126,7 +126,14 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    run_date = china_today()\n    expected_session = (run_date if is_a_share_trading_day(run_date) and now.time().replace(tzinfo=None) >= dt_time(15, 30) else previous_a_share_trading_day(run_date))\n    expected = expected_session.isoformat()
+    run_date = china_today()
+    expected_session = (
+        run_date
+        if is_a_share_trading_day(run_date)
+        and now.time().replace(tzinfo=None) >= dt_time(15, 30)
+        else previous_a_share_trading_day(run_date)
+    )
+    expected = expected_session.isoformat()
     result = validate_payload(root / "site" / "data", expected_market_date=expected)
     print(
         "Pages payload verified: "
