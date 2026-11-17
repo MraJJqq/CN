@@ -93,11 +93,10 @@ def valid_bars(df):
  mask &= np.isfinite(turnover).all(axis=1)&turnover.ge(0).all(axis=1)
  return x.loc[mask].reset_index(drop=True)
 def ema(values,period):
- a=values.to_numpy(dtype=float);out=np.full(len(a),np.nan)
- if len(a)<period:return pd.Series(out,index=values.index)
- alpha=2/(period+1);v=float(np.mean(a[:period]));out[period-1]=v
- for i in range(period,len(a)):v=alpha*a[i]+(1-alpha)*v;out[i]=v
- return pd.Series(out,index=values.index)
+ """Match the Media/Vegas standard: pandas EWM, adjust=False, min_periods=span."""
+ if not isinstance(period,int) or period<1:raise ValueError("EMA period must be a positive integer")
+ source=pd.to_numeric(values,errors="coerce")
+ return source.ewm(span=period,adjust=False,min_periods=period).mean()
 def cache_paths(cache,symbol):
  safe=symbol.replace(".","-");root=Path(cache);return root/(safe+".csv.gz"),root/(safe+".meta.json")
 def read_meta(path):
