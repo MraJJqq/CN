@@ -55,6 +55,9 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('cn-batch-20261116-1',self.index)
   self.assertIn(r"/^\d{4}-\d{2}-\d{2}$/",self.app)
   self.assertIn('if(!activeSignalDate)ticker.render([],"unavailable")',self.app)
+  self.assertIn('"signals.previous.json"',self.app)
+  self.assertIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
+  self.assertIn("value.checked_on!==chinaCalendarDate()",self.app)
  def test_fullscreen_panel_geometry(self):
   for x in ("#kline-host","#rolling-cards-frame","#signal-ticker","safe-area-inset-bottom"):self.assertIn(x,self.media)
  def test_single_fullscreen_geometry_authority(self):
