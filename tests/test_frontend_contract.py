@@ -153,6 +153,8 @@ class CNFrontendContractTests(unittest.TestCase):
   for marker in ('ENDPOINT="https://qt.gtimg.cn/q="',"BATCH_SIZE=50","f[3]","f[4]","f[12]","f[13]"):
    self.assertIn(marker,self.live_quotes)
   self.assertIn("updateLiveQuote(quote)",self.kline_controller)
+  self.assertIn(r"/^(sh|sz|bj)\\d{6}$/",self.live_quotes)
+  self.assertIn("updates.push([i,quote.price,quote.previousClose,quote.open,quote.high,quote.low])",self.live_quotes)
   self.assertIn('"live-quote"',self.kline_controller)
  def test_kline_controller_destroy_is_safe_before_indexeddb_opens(self):
   self.assertIn("if(dbp)dbp.then(db=>db?.close()).catch(()=>{});",self.kline_controller)

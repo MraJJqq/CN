@@ -20,10 +20,10 @@ export function createTencentLiveQuotes(){
  let sequence=0;
  async function read(rows){
   if(!Array.isArray(rows))return [];
-  const token=++sequence,symbols=rows.map(row=>String(row?.symbol||"")).filter(s=>/^(sh|sz|bj)\\d{6}$/.test(s)),quotes=[];
+  const token=++sequence,symbols=rows.map(row=>String(row?.symbol||"")).filter(s=>/^(sh|sz|bj)\d{6}$/.test(s)),quotes=[];
   for(let i=0;i<symbols.length;i+=BATCH_SIZE){quotes.push(...await loadBatch(symbols.slice(i,i+BATCH_SIZE)));if(token!==sequence)return []}
   const bySymbol=new Map(quotes.map(row=>[row.symbol,row])),updates=[];
-  for(let i=0;i<rows.length;i++){const quote=bySymbol.get(rows[i]?.symbol);if(quote)updates.push([i,quote.price,quote.previousClose])}
+  for(let i=0;i<rows.length;i++){const quote=bySymbol.get(rows[i]?.symbol);if(quote)updates.push([i,quote.price,quote.previousClose,quote.open,quote.high,quote.low])}
   return updates;
  }
  return Object.freeze({read});

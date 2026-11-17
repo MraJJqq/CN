@@ -196,7 +196,7 @@ export function createTencentKlineController({frame,isHidden=()=>document.hidden
   const t=Date.parse(String(quote.date||"")+"T00:00:00Z"),price=Number(quote.price);
   if(!Number.isFinite(t)||t<=0||!Number.isFinite(price)||price<=0)return false;
   const last=candles[candles.length-1];if(last.t>t)return false;
-  const next={...last};
+  const next={...last};EMA_PERIODS.forEach(period=>delete next["ema"+period]);
   if(last.t<t){
    const open=Number(quote.open)||Number(quote.previousClose)||price;
    next.t=t;next.o=open;next.h=Math.max(open,price,Number(quote.high)||price);

@@ -4,7 +4,7 @@ import {createLifecycleScope} from "./shared/lifecycle.js?v=cn-ema-snapshot-2026
 import {createPageLifecycle} from "./shared/page-lifecycle-v6.js?v=cn-ema-snapshot-20261116-1";
 import {createSignalTicker} from "./modules/signal-ticker/ticker.js?v=cn-signal-previous-20261117-1";
 import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-systems-20261116-1";
-import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-1";
+import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-2";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
 let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false;
@@ -170,7 +170,7 @@ async function refreshLiveMarket(){
   if(destroyed||isHidden()||!updates.length)return false;
   window.updateQuotes(updates);
   const current=updates.find(row=>rows[row[0]]?.symbol===controller.state.symbol);
-  if(current){const card=rows[current[0]];controller.updateLiveQuote({symbol:card.symbol,date:chinaCalendarDate(),price:current[1],previousClose:current[2]})}
+  if(current){const card=rows[current[0]];controller.updateLiveQuote({symbol:card.symbol,date:chinaCalendarDate(),price:current[1],previousClose:current[2],open:current[3],high:current[4],low:current[5]})}
   return true;
  }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] five-minute Tencent quote refresh failed",error);return false}
  finally{marketRefreshBusy=false}
