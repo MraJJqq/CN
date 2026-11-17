@@ -11,10 +11,10 @@ from zoneinfo import ZoneInfo
 
 try:
     from .a_share_cache import latest_completed_session
-    from .trading_calendar import china_today
+    from .trading_calendar import china_today, previous_a_share_trading_day
 except ImportError:
     from a_share_cache import latest_completed_session
-    from trading_calendar import china_today
+    from trading_calendar import china_today, previous_a_share_trading_day
 
 
 REQUIRED_FILES = (
@@ -74,6 +74,9 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
     previous_market_date = summary.get("previous_market_date")
     if not previous_market_date:
         raise ValueError("Summary is missing previous_market_date")
+    expected_previous = previous_a_share_trading_day(datetime.strptime(market_date, "%Y-%m-%d").date()).isoformat()
+    if previous_market_date != expected_previous:
+        raise ValueError("Summary previous_market_date does not match the official prior SSE session")
 
     symbols = [row.get("symbol") for row in universe if isinstance(row, dict)]
     if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not symbol for symbol in symbols):
