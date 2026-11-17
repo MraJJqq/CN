@@ -1,12 +1,6 @@
 name: CN A-share Daily Cache and Publish
 # Tencent scans are independent from frontend-only Pages releases.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/**"
-      - "config/**"
-      - "requirements.txt"
   workflow_dispatch:
   schedule:
     # 16:30 China Standard Time, after the A-share cash market closes.
@@ -21,9 +15,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     outputs:
-      has-data: ${{ steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' }}
+      has-data: ${{ steps.scan.outcome == 'success' && steps.validate.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' }}
     steps:
       - uses: actions/checkout@v7
+      - name: Gate manual scans until after the A-share close
+        id: scan-window
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          allowed=$(python -c 'from datetime import datetime,time; from zoneinfo import ZoneInfo; now=datetime.now(ZoneInfo("Asia/Shanghai")); print(str(now.time().replace(tzinfo=None) >= time(15,30)).lower())')
+          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+          echo "Manual scan gate (15:30 China time): $allowed"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
@@ -48,9 +49,10 @@ jobs:
             cn-cn500-tencent-qfq-v5-
       - name: Backfill or incrementally update Tencent daily history
         id: scan
-        if: steps.calendar.outputs.is-trading-day == 'true'
+        if: steps.calendar.outputs.is-trading-day == 'true' && (github.event_name != 'workflow_dispatch' || steps.scan-window.outputs.allowed == 'true')
         run: python scripts/a_share_cache.py --workers 4 --cache-dir .cache/cn500-tencent-qfq
       - name: Validate complete Pages data payload
+        id: validate
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
         run: python scripts/validate_pages_payload.py
       - name: Check Bark credentials
@@ -76,7 +78,7 @@ jobs:
           BARK_DEDUPE_DIR: .cache/cn500-tencent-qfq
         run: python scripts/push_signals.py
       - name: Save Tencent cache snapshot
-        if: always() && steps.scan.outcome != 'cancelled'
+        if: always() && steps.scan.outcome != 'cancelled' && steps.scan.outcome != 'skipped'
         uses: actions/cache/save@v6
         with:
           path: .cache/cn500-tencent-qfq
@@ -92,7 +94,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
       - name: Package Pages site
-        if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
+        if: steps.scan.outcome == 'success' && steps.validate.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: site

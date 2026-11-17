@@ -8,7 +8,7 @@ from datetime import date,datetime
 from zoneinfo import ZoneInfo
 from unittest.mock import patch
 from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days,exchange_closed_days
-from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session,build_scan_diagnostics
+from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session,build_scan_diagnostics,analyze_one
 from scripts.push_signals import bark_marker_path,notification_already_sent,record_notification_sent
 from scripts.a_share_cache import to_tencent_symbol,parse_tencent_quote_text,merge_frames,through_date,valid_bars,excluded_name,ema,normalize
 from scripts.validate_pages_payload import validate_payload
@@ -129,6 +129,38 @@ class TencentNameParserTests(unittest.TestCase):
   self.assertEqual(names["sh600000"],"浦发银行")
   self.assertEqual(names["sz000001"],"平安银行")
 
+class AShareSignalRuleTests(unittest.TestCase):
+ def _analyze(self, closes, ema12, mid=(100.0,100.2), red=(200.0,200.2)):
+  dates=pd.date_range("2026-11-09",periods=len(closes),freq="B")
+  bars=pd.DataFrame({"date":dates,"open":closes,"high":[x+0.5 for x in closes],"low":[x-0.5 for x in closes],"close":closes,"volume":[1000]*len(closes),"amount":[100000]*len(closes)})
+  def fake_ema(values,period):
+   selected=ema12 if period==12 else mid if period in (144,169) else red
+   return pd.Series(selected,index=values.index,dtype=float)
+  with patch("scripts.a_share_cache.fetch_cached",return_value=(bars,{})),patch("scripts.a_share_cache.ema",side_effect=fake_ema):
+   return analyze_one({"symbol":"sh600000","name":"浦发银行"},dates[-1].date().isoformat(),"unused")
+ def test_touch_candle_is_observation_only_and_later_close_confirms(self):
+  result=self._analyze([80,80,100,110],[90,90,95,105])
+  self.assertEqual(len(result["signals"]),1)
+  signal=result["signals"][0]
+  self.assertEqual(signal["observation_date"],"2026-11-11")
+  self.assertEqual(signal["confirmation_date"],"2026-11-12")
+  self.assertEqual(signal["confirmation_side"],"上方")
+ def test_observation_has_no_expiry_before_later_ema12_confirmation(self):
+  result=self._analyze([80,80,100,102,102,102,110],[90,90,95,102,102,102,105])
+  self.assertEqual(len(result["signals"]),1)
+  self.assertEqual(result["signals"][0]["confirmation_date"],"2026-11-17")
+ def test_same_candle_mid_and_red_touch_merges_into_one_signal(self):
+  result=self._analyze([80,80,100,110],[90,90,95,105],mid=(100.0,100.2),red=(100.0,100.2))
+  self.assertEqual(len(result["signals"]),1)
+  self.assertEqual(result["signals"][0]["observation_zone"],"中锋,红峰")
+ def test_later_close_below_ema12_confirms_short_side(self):
+  result=self._analyze([120,120,100,90],[110,110,105,95])
+  self.assertEqual(len(result["signals"]),1)
+  self.assertEqual(result["signals"][0]["confirmation_side"],"下方")
+ def test_touch_without_later_ema12_break_does_not_signal(self):
+  result=self._analyze([80,80,100,102,102],[90,90,95,102,102])
+  self.assertEqual(result["signals"],[])
+
 class PagesPayloadValidationTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
@@ -190,6 +222,12 @@ class WorkflowReliabilityTests(unittest.TestCase):
   self.assertNotIn('      - "site/**"',scan)
   self.assertIn('      - "site/**"',publish)
   self.assertIn('cron: "30 8 * * 1-5"',scan)
+  self.assertNotIn("  push:",scan)
+  self.assertIn("  workflow_dispatch:",scan)
+  self.assertIn("Gate manual scans until after the A-share close",scan)
+  self.assertIn("steps.scan-window.outputs.allowed == 'true'",scan)
+  self.assertIn("steps.scan.outcome != 'skipped'",scan)
+  self.assertIn("steps.validate.outcome == 'success'",scan)
   self.assertIn("Check Bark credentials",scan)
   self.assertIn("steps.bark.outputs.configured == 'true'",scan)
   self.assertIn("continue-on-error: true",scan)
