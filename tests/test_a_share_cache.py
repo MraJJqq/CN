@@ -225,7 +225,7 @@ class WorkflowReliabilityTests(unittest.TestCase):
   publish=(root/".github/workflows/pages-publish.yml").read_text(encoding="utf-8")
   self.assertNotIn('      - "site/**"',scan)
   self.assertIn('      - "site/**"',publish)
-  self.assertIn('cron: "30 8 * * 1-5"',scan)
+  self.assertIn('cron: "35 7 * * 1-5"',scan)
   self.assertNotIn("  push:",scan)
   self.assertIn("  workflow_dispatch:",scan)
   self.assertIn("Gate manual scans until after the A-share close",scan)
