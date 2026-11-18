@@ -56,18 +56,48 @@ def format_bark_body(names: list[str], line_width: int = BARK_LINE_WIDTH) -> str
     return "\n".join(lines) if lines else "▰ No change ▰"
 
 
+def notification_market_date(now: datetime, summary: dict, event_name: str) -> str:
+    """Manual runs notify the latest completed session; scheduled runs notify today's close."""
+    if event_name == "workflow_dispatch":
+        market_date = str(summary.get("market_date") or "").strip()
+        if not market_date:
+            raise RuntimeError("Refusing CN Bark push: summary has no completed market_date")
+        return market_date
+    return now.date().isoformat()
+
+
+def should_skip_duplicate(event_name: str, market_date: str, directory: str | Path | None = None) -> bool:
+    # Every manual run must send. Daily dedupe applies only to scheduled notifications.
+    return event_name != "workflow_dispatch" and notification_already_sent(market_date, directory)
+
+
+def validate_signal_rows(rows: object, market_date: str) -> list[dict]:
+    if not isinstance(rows, list) or any(
+        not isinstance(row, dict) or row.get("confirmation_date") != market_date
+        for row in rows
+    ):
+        raise RuntimeError(
+            "Refusing CN Bark push: signal rows do not all match "
+            f"the completed market session {market_date}"
+        )
+    return rows
+
+
 def main() -> int:
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
     today = now.date()
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "schedule")
+    manual = event_name == "workflow_dispatch"
+
     if not is_a_share_trading_day(today):
         print(f"{today.isoformat()} is not an A-share trading day; Bark push skipped.")
         return 0
-    if now.time().replace(tzinfo=None) < dt_time(15, 30):
-        print("A-share market has not closed; Bark push skipped.")
+    if not manual and now.time().replace(tzinfo=None) < dt_time(15, 30):
+        print("A-share market has not closed; scheduled Bark push skipped.")
         return 0
 
     summary = json.loads(Path("site/data/summary.json").read_text(encoding="utf-8"))
-    expected_market_date = today.isoformat()
+    expected_market_date = notification_market_date(now, summary, event_name)
     if summary.get("market_date") != expected_market_date:
         raise RuntimeError(
             "Refusing stale CN Bark payload: "
@@ -80,16 +110,14 @@ def main() -> int:
         print("BARK_KEY is not configured; Bark push skipped.")
         return 0
 
-    if notification_already_sent(expected_market_date):
-        print(f"CN Bark notification already sent for {expected_market_date}; duplicate push skipped.")
+    if should_skip_duplicate(event_name, expected_market_date):
+        print(f"CN Bark scheduled notification already sent for {expected_market_date}; duplicate push skipped.")
         return 0
 
-    rows = json.loads(Path("site/data/signals.json").read_text(encoding="utf-8"))
-    if not isinstance(rows, list) or any(
-        not isinstance(row, dict) or row.get("confirmation_date") != expected_market_date
-        for row in rows
-    ):
-        raise RuntimeError("Refusing CN Bark push: signal rows do not all match today's completed market session")
+    rows = validate_signal_rows(
+        json.loads(Path("site/data/signals.json").read_text(encoding="utf-8")),
+        expected_market_date,
+    )
     names = []
     seen = set()
     for row in rows:
