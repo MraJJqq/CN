@@ -148,6 +148,14 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("},300000)",self.app)
   self.assertIn("daily scan is not published yet",self.app)
   self.assertNotIn("if(summary&&chinaMinutesOfDay()>=995)markDailyCheckCompleted()",self.app)
+ def test_published_signal_snapshots_refresh_without_page_reload(self):
+  for marker in ("lastObservedSignalPublication", "function scheduleSignalPoll()", "signalPollTimer=setTimeout(async()=>", "},30000)", "refreshSignals(),publishedAt=summary?.generated_at_utc||\"\"", "refreshCards({force:true})", "controller.refresh()", "newly published manual or scheduled snapshot applied", "scheduleSignalPoll()", "signalPollTimer=dailyRefreshTimer=marketRefreshTimer=null"):
+   self.assertIn(marker,self.app)
+  poll=self.app[self.app.index("function scheduleSignalPoll()"):self.app.index("function startForegroundTimers()")]
+  self.assertIn("activeSignalSnapshot!==previousSnapshot",poll)
+  self.assertIn("if(!signalSnapshotChanged&&controller.state.symbol)await controller.refresh()",poll)
+  self.assertIn("finally{scheduleSignalPoll()}",poll)
+  self.assertIn("scheduleSignalPoll();",self.app[self.app.index("function startForegroundTimers()"):])
  def test_five_minute_live_market_refresh_only_updates_signal_carousel_symbols(self):
   for marker in ("setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh())","signalStocks.map(item=>item.symbol)","liveQuotes.read(symbol)","liveQuoteBySymbol.set(symbol,datedQuote)","controller.updateLiveQuote(datedQuote)","isChinaTradingSession()","function millisecondsUntilNextMarketRefresh()","if(isChinaTradingSession())return 300000-(Date.now()%300000)","[[9,30],[13,0]]","now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute)"):
    self.assertIn(marker,self.app)
