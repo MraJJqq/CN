@@ -16,7 +16,11 @@ def market_code(code: str) -> str:
         return code
     if len(code) != 6 or not code.isdigit():
         raise ValueError(f"invalid A-share code: {code}")
-    return ("sh" if code.startswith(("5", "6", "9")) else "sz") + code
+    if code.startswith("6"):
+        return "sh" + code
+    if code.startswith(("0", "3")):
+        return "sz" + code
+    raise ValueError(f"unsupported non-CN500 exchange code: {code}")
 
 
 def _fetch_segment(code: str, start: date, end: date) -> list[list]:
@@ -32,9 +36,9 @@ def _fetch_segment(code: str, start: date, end: date) -> list[list]:
     with urllib.request.urlopen(request, timeout=25) as response:
         payload = json.loads(response.read().decode("utf-8"))
     node = payload.get("data", {}).get(symbol, {})
-    rows = node.get("qfqday") or node.get("day") or []
-    if not isinstance(rows, list):
-        raise RuntimeError(f"Tencent returned invalid daily data for {symbol}")
+    rows = node.get("qfqday")
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError(f"Tencent QFQ daily data unavailable for {symbol}")
     return rows
 
 

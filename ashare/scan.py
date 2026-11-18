@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from .bark import push_scan
@@ -24,7 +24,7 @@ def _history_start(end: date) -> date:
         return end.replace(year=end.year - HISTORY_YEARS, day=28)
 
 
-def run_scan(force: bool = False) -> int:
+def run_scan() -> int:
     now = datetime.now(SHANGHAI)
     today = now.date()
     days = load_trading_days()
@@ -32,8 +32,8 @@ def run_scan(force: bool = False) -> int:
     if session is None or session != today:
         print("No China A-share trading session today; scan skipped.")
         return 0
-    if not force and (now.hour, now.minute) < (15, 35):
-        raise RuntimeError("Daily scan is not allowed before 15:35 Asia/Shanghai")
+    if (now.hour, now.minute) < (15, 35):
+        raise RuntimeError("Daily signal scan is not allowed before 15:35 Asia/Shanghai")
 
     universe = load_universe()
     start = _history_start(session)
@@ -87,10 +87,9 @@ def run_scan(force: bool = False) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--force", action="store_true", help="Manual run after market close; does not bypass data validation.")
-    args = parser.parse_args()
+    parser.parse_args()
     try:
-        raise SystemExit(run_scan(force=args.force))
+        raise SystemExit(run_scan())
     except Exception as exc:
         print(f"A-share scan failed: {exc}", file=sys.stderr)
         raise SystemExit(1)
