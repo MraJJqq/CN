@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A股周期</title>
+<style>
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('../../fonts/ChakraPetch-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+:root {
+  --ink: #e8f0ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Chakra Petch', sans-serif;
+  user-select: none;
+}
+.tf {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  height: 31.17%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20.833%, #000 79.167%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 20.833%, #000 79.167%, transparent 100%);
+}
+.tf .period {
+  display: block;
+  padding: 0 clamp(4px, 1vw, 8px);
+  font: 700 clamp(28px, 4.3vh, 44px)/1.05 'Chakra Petch', sans-serif;
+  color: var(--ink);
+  filter:
+    drop-shadow(0 0 12px rgba(46,230,166,.7))
+    drop-shadow(0 10px 14px rgba(0,0,0,.6));
+}
+</style>
+</head>
+<body>
+<div class="tf" role="img" aria-label="日线周期">
+  <span class="period">1D</span>
+</div>
+
+</body>
+</html>
