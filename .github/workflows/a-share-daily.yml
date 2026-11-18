@@ -18,13 +18,6 @@ jobs:
       has-data: ${{ steps.scan.outcome == 'success' && steps.validate.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' }}
     steps:
       - uses: actions/checkout@v7
-      - name: Gate manual scans until after the A-share close
-        id: scan-window
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          allowed=$(python -c 'from datetime import datetime,time; from zoneinfo import ZoneInfo; now=datetime.now(ZoneInfo("Asia/Shanghai")); print(str(now.time().replace(tzinfo=None) >= time(15,30)).lower())')
-          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
-          echo "Manual scan gate (15:30 China time): $allowed"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
@@ -49,7 +42,7 @@ jobs:
             cn-cn500-tencent-qfq-v5-
       - name: Backfill or incrementally update Tencent daily history
         id: scan
-        if: steps.calendar.outputs.is-trading-day == 'true' && (github.event_name != 'workflow_dispatch' || steps.scan-window.outputs.allowed == 'true')
+        if: steps.calendar.outputs.is-trading-day == 'true'
         run: python scripts/a_share_cache.py --workers 4 --cache-dir .cache/cn500-tencent-qfq
       - name: Validate complete Pages data payload
         id: validate
