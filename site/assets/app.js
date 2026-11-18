@@ -7,7 +7,7 @@ import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-sy
 import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-5";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
-let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false,liveQuoteBySymbol=new Map();
+let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,lastObservedSignalPublication="",signalPollTimer=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false,liveQuoteBySymbol=new Map();
 const interactionLocks=new Set();let rotationPaused=false,rotationPause=null;
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",SIGNAL_CHECK_KEY="cn-daily-snapshot-checked-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
@@ -127,7 +127,7 @@ async function refreshSignals(){
 async function boot(){
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
- try{await refreshSignals()}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
+ try{const summary=await refreshSignals();lastObservedSignalPublication=summary?.generated_at_utc||""}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
  if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();void refreshLiveMarket();
 }
 async function refreshDailySnapshot(){
@@ -154,7 +154,7 @@ function scheduleDailyRetry(){
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
  dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},300000);
 }
-function stopForegroundTimers(){if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);dailyRefreshTimer=marketRefreshTimer=null}
+function stopForegroundTimers(){if(signalPollTimer!==null)clearTimeout(signalPollTimer);if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);signalPollTimer=dailyRefreshTimer=marketRefreshTimer=null}
 function isChinaTradingSession(){
  const t=chinaClock(),day=new Date(Date.UTC(t.year,t.month-1,t.day)).getUTCDay(),minutes=t.hour*60+t.minute;
  return day>=1&&day<=5&&((minutes>=570&&minutes<690)||(minutes>=780&&minutes<900));
@@ -212,8 +212,29 @@ function scheduleMarketRefresh(){
  if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);
  marketRefreshTimer=setTimeout(()=>{marketRefreshTimer=null;void refreshLiveMarket().finally(()=>scheduleMarketRefresh())},millisecondsUntilNextMarketRefresh());
 }
+function scheduleSignalPoll(){
+ if(destroyed||isHidden())return;
+ if(signalPollTimer!==null)clearTimeout(signalPollTimer);
+ signalPollTimer=setTimeout(async()=>{
+  signalPollTimer=null;
+  const previousSnapshot=activeSignalSnapshot;
+  try{
+   const summary=await refreshSignals(),publishedAt=summary?.generated_at_utc||"";
+   if(publishedAt&&publishedAt!==lastObservedSignalPublication){
+    const signalSnapshotChanged=activeSignalSnapshot!==previousSnapshot;
+    if(await refreshCards({force:true})){
+     lastObservedSignalPublication=publishedAt;
+     if(!signalSnapshotChanged&&controller.state.symbol)await controller.refresh();
+     console.info("[CN] newly published manual or scheduled snapshot applied",summary.market_date);
+    }
+   }
+  }catch(error){if(!destroyed&&!isHidden())console.warn("[CN] published signal poll failed; will retry",error)}
+  finally{scheduleSignalPoll()}
+ },30000);
+}
 function startForegroundTimers(){
  if(destroyed||isHidden())return;
+ scheduleSignalPoll();
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
  dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},millisecondsUntilDailyRefresh());
  if(marketRefreshTimer===null)scheduleMarketRefresh();
