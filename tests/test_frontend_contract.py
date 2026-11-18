@@ -59,7 +59,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('"signals.previous.json"',self.app)
   self.assertIn('ticker.render(next,"ready")',self.app);self.assertNotIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
   self.assertNotIn('next.length?"ready":"previous"',self.app)
-  self.assertIn("cn-live-market-20261117-5",self.index)
+  self.assertIn("cn-signal-live-refresh-20261118-1",self.index)
   self.assertIn("value.checked_on!==chinaCalendarDate()",self.app)
  def test_fullscreen_panel_geometry(self):
   for x in ("#kline-host","#rolling-cards-frame","#signal-ticker","safe-area-inset-bottom"):self.assertIn(x,self.media)
