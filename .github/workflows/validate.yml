@@ -1,0 +1,30 @@
+name: CN Validation
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Check frontend refresh boundaries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html=Path("site/index.html").read_text()
+          js=Path("site/assets/app.js").read_text()
+          assert 'id="kline-host"' in html and 'id="signal-list"' in html
+          assert "300000" in js and "tencentQuote" in js and "marketOpen()" in js
+          assert "setVegasEmaCandles" in js and "vegas-cn-kline-viewport-v1" in Path("site/assets/media/v6-viewport-state.js").read_text()
+          PY
