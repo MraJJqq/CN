@@ -1,0 +1,8 @@
+/* CN-specific legibility layer; shared card structure stays byte-identical to Media. */
+.sym{width:100%;min-width:0;gap:0;font-size:15px;font-weight:750;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.55)}
+.nm{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{min-width:0}
+.quote{gap:4px;margin-top:4px;max-width:100%}
+.chg{flex:0 1 auto;max-width:100%;font-size:12px;font-weight:750;line-height:1.1;text-shadow:0 1px 2px rgba(0,0,0,.85);white-space:nowrap}
+.price{display:block;max-width:100%;font-size:28px;font-weight:850;line-height:1.08;letter-spacing:-.35px;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px color-mix(in srgb,var(--c) 32%,transparent)}
+@media(max-width:380px){.sym{font-size:14px}.price{font-size:26px}.chg{font-size:11px}}

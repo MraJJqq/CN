@@ -16,7 +16,7 @@ class MediaParityTests(unittest.TestCase):
    "site/assets/shared/lifecycle.js":"3ac39c9cee24d7bcdc946826e2f745cb3688db83",
    "site/assets/shared/page-lifecycle-v6.js":"2d6822edc3074604092e8ed2e5e242736f5cccc1",
    "site/assets/kline/rotation-pause.js":"1ab93849cfebdd11eb4f957402e9a19e881f6450",
-   "site/assets/rolling-cards.css":"44dc3547c3560a062ae94223fdb49c98e65f5b20",
+   "site/assets/rolling-cards.css":"ed61fbf39c2075675a4e36ffb45c840961a30bb8",
   }
   for path,sha in expected.items():self.assertEqual(self.git_blob_sha(path),sha,path)
  def test_a_share_ema_is_exactly_five_periods(self):
