@@ -11,7 +11,16 @@ var SLOP=4;        // 手指移动超过多少像素才算拖动（小于此值�
 /* ================================= */
 
 /* ---- 数据：[代码, 初始价] ；接口见文末 updateQuote / updateQuotes ---- */
-window.__CN_CARD_DATA_READY__=fetch("./data/cards.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw new Error("CN500 cards unavailable");return r.json()}).then(rows=>{if(!Array.isArray(rows)||rows.length!==500)throw new Error("CN500 card count mismatch");window.__CN_CARD_DATA__=rows;return rows});
+window.__CN_CARD_DATA_READY__=fetch("./data/cards.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw new Error("CN500 cards unavailable");return r.json()}).then(rows=>{
+  if(!Array.isArray(rows)||rows.length!==500)throw new Error("CN500 card count mismatch");
+  var seen=new Set();
+  for(var k=0;k<rows.length;k++){
+    var row=rows[k],last=Number(row?.latest_close);
+    if(!row||typeof row.symbol!=="string"||!row.symbol||seen.has(row.symbol)||!Number.isFinite(last)||last<=0)throw new Error("CN500 card row invalid at index "+k);
+    seen.add(row.symbol);
+  }
+  window.__CN_CARD_DATA__=rows;return rows;
+});
 var CARD_DATA=await window.__CN_CARD_DATA_READY__;var SYMS=CARD_DATA.map(x=>[x.symbol,Number(x.latest_close)||0]);
 var N=SYMS.length,W=172,H=100,TAU=Math.PI*2,activeCount=0,step=TAU/24,A=SHOW*step;
 
@@ -25,13 +34,13 @@ var order=new Uint16Array(N);for(var oi=0;oi<N;oi++)order[oi]=oi;
 /* ---- 只为当前信号集创建卡片节点；轮播期间复用，切出信号集时卸载 ---- */
 var tpl=document.createElement("div");
 tpl.className="c";
-tpl.innerHTML='<div class="fg"><div class="row"><div class="sym"><img class="ico" alt=""><span class="nm"></span></div></div><div class="quote"><div class="price"></div><div class="chg"></div></div></div>';
+tpl.innerHTML='<div class="fg"><div class="row"><div class="sym"><span class="nm"></span></div></div><div class="quote"><div class="price"></div><div class="chg"></div></div></div>';
 // Keep the 500-stock data arrays, but create DOM nodes only for active signal cards.
 function createCard(i){
-  var e=tpl.cloneNode(true),ic=e.querySelector(".ico");
+  var e=tpl.cloneNode(true);
   e.dataset.symbol=SYMS[i][0];
-  ic.remove();
-  e.querySelector(".nm").textContent=(CARD_DATA[i].name||CARD_DATA[i].code)+" · "+CARD_DATA[i].code;
+  var label=CARD_DATA[i].name||CARD_DATA[i].code||SYMS[i][0],code=CARD_DATA[i].code;
+  e.querySelector(".nm").textContent=code&&code!==label?label+" · "+code:label;
   els[i]=e;pe[i]=e.querySelector(".price");ce[i]=e.querySelector(".chg");
   flush(i);
   return e;
@@ -65,8 +74,8 @@ function layout(){
   /* 小屏减少可见卡片数量，优先保证卡片文字可读；卡片原始样式与交互不变。 */
   SHOW=Wd<500?2.2:Wd<900?2.8:3.6;
   A=SHOW*step;
-  var maxCardW=Math.min(W,Math.max(112,Math.min(172,Wd/3.2)));
-  var maxCardH=Math.min(H,Math.max(58,Hd*.78));
+  var maxCardW=Math.min(W,Math.max(128,Math.min(172,Wd/2.7)));
+  var maxCardH=Math.min(H,Math.max(72,Hd*.9));
   bs=Math.min(maxCardW/W,maxCardH/H);
   var cw=W*bs;
   Rx=cw*1.08/step;
@@ -211,6 +220,7 @@ window.setCardOrder=function(symbols){
   vp.appendChild(fragment);
   order=next;
   activeCount=symbols.length;
+  step=TAU/Math.max(24,activeCount);
   A=SHOW*step;
   pos=0;
   if(activeCount===0){stop();return true}
