@@ -64,7 +64,7 @@ function layout(){
   Wd=vp.clientWidth;Hd=vp.clientHeight;
   /* 小屏减少可见卡片数量，优先保证卡片文字可读；卡片原始样式与交互不变。 */
   SHOW=Wd<500?2.2:Wd<900?2.8:3.6;
-  A=Math.min(SHOW*step,Math.PI*.9);
+  A=SHOW*step;
   var maxCardW=Math.min(W,Math.max(112,Math.min(172,Wd/3.2)));
   var maxCardH=Math.min(H,Math.max(58,Hd*.78));
   bs=Math.min(maxCardW/W,maxCardH/H);
@@ -212,7 +212,7 @@ window.setCardOrder=function(symbols){
   order=next;
   activeCount=symbols.length;
   step=activeCount?TAU/activeCount:TAU;
-  A=Math.min(SHOW*step,Math.PI*.9);
+  A=SHOW*step;
   pos=0;
   if(activeCount===0){stop();return true}
   layout();
