@@ -13,7 +13,7 @@ var SLOP=4;        // 手指移动超过多少像素才算拖动（小于此值�
 /* ---- 数据：[代码, 初始价] ；接口见文末 updateQuote / updateQuotes ---- */
 window.__CN_CARD_DATA_READY__=fetch("./data/cards.json",{cache:"no-cache"}).then(r=>{if(!r.ok)throw new Error("CN500 cards unavailable");return r.json()}).then(rows=>{if(!Array.isArray(rows)||rows.length!==500)throw new Error("CN500 card count mismatch");window.__CN_CARD_DATA__=rows;return rows});
 var CARD_DATA=await window.__CN_CARD_DATA_READY__;var SYMS=CARD_DATA.map(x=>[x.symbol,Number(x.latest_close)||0]);
-var N=SYMS.length,W=172,H=100,TAU=Math.PI*2,activeCount=0,step=TAU,A=SHOW*step;
+var N=SYMS.length,W=172,H=100,TAU=Math.PI*2,activeCount=0,step=TAU/24,A=SHOW*step;
 
 /* ---- 状态：全部用定长数组，运行中零分配 ---- */
 var ring=document.getElementById("ring"),vp=document.getElementById("vp");
@@ -83,7 +83,7 @@ function render(calm){
   if(activeCount===0){for(var h=0;h<N;h++){if(!hid[h]){hid[h]=1;op[h]=0;els[h].style.opacity=0;els[h].classList.remove("is-visible");els[h].style.pointerEvents="none"}}return}
   for(var slot=0;slot<activeCount;slot++){
     var i=order[slot];
-    var f=pos+slot*step;f-=TAU*Math.round(f/TAU);
+    var f=pos+(slot-(activeCount-1)/2)*step;f-=TAU*Math.round(f/TAU);
     var a=f<0?-f:f,e=els[i];
     if(a>=A){if(!hid[i]){hid[i]=1;op[i]=0;e.style.opacity=0;e.classList.remove("is-visible");e.style.pointerEvents="none"}continue}   // 背面：透明且不再更新
     if(hid[i]){hid[i]=0;e.classList.add("is-visible");e.style.pointerEvents="auto";loadLogo(i);if(dirty[i])flush(i)}                           // 入场时文字已就绪
@@ -211,7 +211,6 @@ window.setCardOrder=function(symbols){
   vp.appendChild(fragment);
   order=next;
   activeCount=symbols.length;
-  step=activeCount?TAU/activeCount:TAU;
   A=SHOW*step;
   pos=0;
   if(activeCount===0){stop();return true}
