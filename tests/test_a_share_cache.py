@@ -134,36 +134,44 @@ class AShareSignalRuleTests(unittest.TestCase):
   dates=pd.date_range("2026-11-09",periods=len(closes),freq="B")
   bars=pd.DataFrame({"date":dates,"open":closes,"high":[x+0.5 for x in closes],"low":[x-0.5 for x in closes],"close":closes,"volume":[1000]*len(closes),"amount":[100000]*len(closes)})
   def fake_ema(values,period):
-   if period==12:selected=ema12
-   elif period==144:selected=[mid[0]]*len(values)
-   elif period==169:selected=[mid[1]]*len(values)
-   elif period==576:selected=[red[0]]*len(values)
-   else:selected=[red[1]]*len(values)
+   selected={12:ema12,144:[mid[0]]*len(values),169:[mid[1]]*len(values),576:[red[0]]*len(values),676:[red[1]]*len(values)}[period]
    return pd.Series(selected,index=values.index,dtype=float)
   with patch("scripts.a_share_cache.fetch_cached",return_value=(bars,{})),patch("scripts.a_share_cache.ema",side_effect=fake_ema):
    return analyze_one({"symbol":"sh600000","name":"浦发银行"},dates[-1].date().isoformat(),"unused")
- def test_touch_candle_is_observation_only_and_later_close_confirms(self):
-  result=self._analyze([80,80,100,110],[90,90,95,105])
+ def test_touch_direction_short_then_close_below_ema12(self):
+  result=self._analyze([90,90,100,94],[95,95,95,95])
   self.assertEqual(len(result["signals"]),1)
   signal=result["signals"][0]
   self.assertEqual(signal["observation_date"],"2026-11-11")
   self.assertEqual(signal["confirmation_date"],"2026-11-12")
-  self.assertEqual(signal["confirmation_side"],"上方")
- def test_observation_has_no_expiry_before_later_ema12_confirmation(self):
-  result=self._analyze([80,80,100,102,102,102,110],[90,90,95,102,102,102,105])
+  self.assertEqual(signal["confirmation_side"],"下方")
+ def test_touch_direction_long_then_close_above_ema12(self):
+  result=self._analyze([110,110,100,106],[105,105,105,105])
   self.assertEqual(len(result["signals"]),1)
-  self.assertEqual(result["signals"][0]["confirmation_date"],"2026-11-17")
- def test_same_candle_mid_and_red_touch_merges_into_one_signal(self):
-  result=self._analyze([80,80,100,110],[90,90,95,105],mid=(100.0,100.2),red=(100.0,100.2))
+  self.assertEqual(result["signals"][0]["confirmation_side"],"上方")
+ def test_observation_has_no_expiry(self):
+  result=self._analyze([90,90,100,101,102,94],[95]*6)
+  self.assertEqual(len(result["signals"]),1)
+  self.assertEqual(result["signals"][0]["confirmation_date"],"2026-11-16")
+ def test_wrong_direction_does_not_trigger(self):
+  result=self._analyze([90,90,100,110,94],[95]*5)
+  self.assertEqual(len(result["signals"]),1)
+  self.assertEqual(result["signals"][0]["confirmation_date"],"2026-11-13")
+  self.assertEqual(result["signals"][0]["confirmation_side"],"下方")
+ def test_same_day_mid_and_red_touch_merge(self):
+  result=self._analyze([90,90,100,94],[95]*4,mid=(100.0,100.2),red=(100.0,100.2))
   self.assertEqual(len(result["signals"]),1)
   self.assertEqual(result["signals"][0]["observation_zone"],"中锋,红峰")
- def test_later_close_below_ema12_confirms_short_side(self):
-  result=self._analyze([120,120,100,90],[110,110,105,95])
-  self.assertEqual(len(result["signals"]),1)
-  self.assertEqual(result["signals"][0]["confirmation_side"],"下方")
- def test_touch_without_later_ema12_break_does_not_signal(self):
-  result=self._analyze([80,80,100,102,102],[90,90,95,102,102])
+ def test_rearm_requires_price_to_leave_zone_before_next_touch(self):
+  result=self._analyze([90,90,100,94,100,94,90,100,94],[95]*9)
+  self.assertEqual(len(result["signals"]),2)
+ def test_touch_without_directional_ema12_confirmation_does_not_signal(self):
+  result=self._analyze([90,90,100,101,102],[95]*5)
   self.assertEqual(result["signals"],[])
+ def test_ema_matches_v12_recursive_ewm(self):
+  values=pd.Series(range(1,30),dtype=float)
+  expected=values.ewm(span=12,adjust=False,min_periods=12).mean()
+  pd.testing.assert_series_equal(ema(values,12),expected)
 
 class PagesPayloadValidationTests(unittest.TestCase):
  @classmethod

@@ -1,7 +1,14 @@
 name: CN A-share Daily Cache and Publish
+run-name: CN daily scan (${{ github.event_name == 'schedule' && 'scheduled' || inputs.recovery_slot || 'manual' }})
 # Tencent scans are independent from frontend-only Pages releases.
 on:
   workflow_dispatch:
+    inputs:
+      recovery_slot:
+        description: Watchdog recovery slot marker (leave empty for manual runs)
+        required: false
+        type: string
+        default: ""
   schedule:
     # 15:35 China Standard Time, after the A-share cash market closes.
     - cron: "35 7 * * 1-5"

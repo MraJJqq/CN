@@ -93,11 +93,8 @@ def valid_bars(df):
  mask &= np.isfinite(turnover).all(axis=1)&turnover.ge(0).all(axis=1)
  return x.loc[mask].reset_index(drop=True)
 def ema(values,period):
- a=values.to_numpy(dtype=float);out=np.full(len(a),np.nan)
- if len(a)<period:return pd.Series(out,index=values.index)
- alpha=2/(period+1);v=float(np.mean(a[:period]));out[period-1]=v
- for i in range(period,len(a)):v=alpha*a[i]+(1-alpha)*v;out[i]=v
- return pd.Series(out,index=values.index)
+ """Match V12 exactly: recursive EWM, with no output before a full span."""
+ return values.astype(float).ewm(span=period,adjust=False,min_periods=period).mean()
 def cache_paths(cache,symbol):
  safe=symbol.replace(".","-");root=Path(cache);return root/(safe+".csv.gz"),root/(safe+".meta.json")
 def read_meta(path):
@@ -143,16 +140,45 @@ def analyze_one(item,end,cache):
  if (date.fromisoformat(end)-last).days>15:return {"status":"pass","symbol":symbol,"code":symbol[2:],"name":name,"reason":"stale_history","last_date":last.isoformat(),"latest_close":float(bars.close.iloc[-1]),"previous_close":float(bars.close.iloc[-2]) if len(bars)>1 else None}
  bars=bars.sort_values("date").reset_index(drop=True)
  for p in PERIODS:bars[f"ema{p}"]=ema(bars.close,p)
- signals=[];pending=None
- for _,r in bars.iterrows():
-  touched=[]
-  for label,a,b in (("中锋",144,169),("红峰",576,676)):
-   x,y=r[f"ema{a}"],r[f"ema{b}"]
-   if pd.notna(x) and pd.notna(y) and r.low<=max(x,y) and r.high>=min(x,y):touched.append(label)
-  if touched:pending={"date":r.date.date().isoformat(),"zones":touched};continue
-  if pending and pd.notna(r.ema12):
-   side="上方" if r.close>r.ema12 else "下方" if r.close<r.ema12 else None
-   if side:signals.append({"code":symbol[2:],"symbol":symbol,"name":name,"observation_date":pending["date"],"confirmation_date":r.date.date().isoformat(),"observation_zone":",".join(pending["zones"]),"close":round(float(r.close),4),"ema12":round(float(r.ema12),4),"confirmation_side":side});pending=None
+ signals=[]
+ for label,a,b in (("中锋",144,169),("红峰",576,676)):
+  state=None
+  armed=True
+  observation_date=None
+  for i in range(1,len(bars)):
+   r=bars.iloc[i]
+   if pd.isna(r[f"ema{a}"]) or pd.isna(r[f"ema{b}"]) or pd.isna(r.ema12):continue
+   lo=min(float(r[f"ema{a}"]),float(r[f"ema{b}"]))
+   hi=max(float(r[f"ema{a}"]),float(r[f"ema{b}"]))
+   touched=float(r.high)>=lo and float(r.low)<=hi
+   if state is None:
+    if touched and armed:
+     midpoint=(lo+hi)/2
+     state="空" if float(bars.close.iloc[i-1])<midpoint else "多"
+     observation_date=r.date.date().isoformat()
+    elif not touched:
+     armed=True
+   else:
+    hit=float(r.close)<float(r.ema12) if state=="空" else float(r.close)>float(r.ema12)
+    if hit:
+     signals.append({"code":symbol[2:],"symbol":symbol,"name":name,
+      "observation_date":observation_date,"confirmation_date":r.date.date().isoformat(),
+      "observation_zone":label,"close":round(float(r.close),4),"ema12":round(float(r.ema12),4),
+      "confirmation_side":"下方" if state=="空" else "上方"})
+     state=None
+     observation_date=None
+     armed=False
+ if signals:
+  merged={}
+  for signal in signals:
+   key=(signal["confirmation_date"],signal["confirmation_side"])
+   if key not in merged:merged[key]=signal.copy()
+   else:
+    zones_seen=merged[key]["observation_zone"].split(",")
+    if signal["observation_zone"] not in zones_seen:zones_seen.append(signal["observation_zone"])
+    merged[key]["observation_zone"]=",".join(zones_seen)
+    merged[key]["observation_date"]=min(merged[key]["observation_date"],signal["observation_date"])
+  signals=sorted(merged.values(),key=lambda x:(x["confirmation_date"],x["confirmation_side"]))
  chart=[[r.date.date().isoformat(),*[round(float(r[c]),6) for c in ("open","high","low","close")],*[round(float(r[f"ema{p}"]),6) if pd.notna(r[f"ema{p}"]) else None for p in PERIODS]] for _,r in bars.iterrows()]
  return {"status":"ok","symbol":symbol,"code":symbol[2:],"name":name,"valid_bars":len(bars),"first_date":bars.date.iloc[0].date().isoformat(),"last_date":last.isoformat(),"latest_close":float(bars.close.iloc[-1]),"previous_close":float(bars.close.iloc[-2]) if len(bars)>1 else None,"median_amount_20d":float(bars.tail(20).amount.median()),"signals":signals,"chart_bars":chart,"cache":meta}
 def worker(items,end,cache,wid):
