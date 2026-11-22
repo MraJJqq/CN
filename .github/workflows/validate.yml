@@ -37,7 +37,7 @@ jobs:
       - name: Install browser test dependencies
         run: |
           npm install --no-save --no-package-lock playwright
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
       - name: Generate isolated CN500 browser fixtures
         run: python tests/create_browser_fixtures.py
       - name: Verify frontend in Chromium at five viewport sizes
@@ -51,3 +51,4 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:8765/ >/dev/null
           node tests/browser-smoke.mjs
+          CN_BROWSER=webkit node tests/browser-smoke.mjs

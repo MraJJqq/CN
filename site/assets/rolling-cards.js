@@ -15,8 +15,8 @@ window.__CN_CARD_DATA_READY__=fetch("./data/cards.json",{cache:"no-cache"}).then
   if(!Array.isArray(rows)||rows.length!==500)throw new Error("CN500 card count mismatch");
   var seen=new Set();
   for(var k=0;k<rows.length;k++){
-    var row=rows[k],last=Number(row?.latest_close);
-    if(!row||typeof row.symbol!=="string"||!row.symbol||seen.has(row.symbol)||!Number.isFinite(last)||last<=0)throw new Error("CN500 card row invalid at index "+k);
+    var row=rows[k],status=row?.status||"ready",last=Number(row?.latest_close),hasQuote=Number.isFinite(last)&&last>0;
+    if(!row||typeof row.symbol!=="string"||!row.symbol||seen.has(row.symbol)||!(["ready","unavailable","error"].includes(status))||(status==="ready"&&!hasQuote)||(row.latest_close!=null&&!hasQuote))throw new Error("CN500 card row invalid at index "+k);
     seen.add(row.symbol);
   }
   window.__CN_CARD_DATA__=rows;return rows;

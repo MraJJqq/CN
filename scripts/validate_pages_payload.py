@@ -43,12 +43,25 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
     universe = _load(data / "universe.json")
     signals = _load(data / "signals.json")
     previous_signals = _load(data / "signals.previous.json")
+    trading_calendar = _load(data / "trading-calendar.json")
 
     if not isinstance(cards, list) or len(cards) != 500:
         raise ValueError("CN500 cards payload must contain exactly 500 rows")
     card_symbols = [row.get("symbol") for row in cards if isinstance(row, dict)]
-    if len(card_symbols) != 500 or len(set(card_symbols)) != 500 or any(not symbol for symbol in card_symbols):
+    if len(card_symbols) != 500 or len(set(card_symbols)) != 500 or any(not isinstance(symbol, str) or not symbol for symbol in card_symbols):
         raise ValueError("CN500 cards payload must contain exactly 500 unique symbols")
+    for row in cards:
+        status = row.get("status", "ready")
+        latest = row.get("latest_close")
+        previous = row.get("previous_close")
+        if status not in {"ready", "unavailable", "error"}:
+            raise ValueError(f"CN500 card has an unsupported status: {status!r}")
+        if status == "ready" and (not isinstance(latest, (int, float)) or isinstance(latest, bool) or latest <= 0):
+            raise ValueError(f"Ready CN500 card is missing a positive latest_close: {row['symbol']}")
+        if latest is not None and (not isinstance(latest, (int, float)) or isinstance(latest, bool) or latest <= 0):
+            raise ValueError(f"CN500 card has an invalid latest_close: {row['symbol']}")
+        if previous is not None and (not isinstance(previous, (int, float)) or isinstance(previous, bool) or previous <= 0):
+            raise ValueError(f"CN500 card has an invalid previous_close: {row['symbol']}")
     if not isinstance(universe, list) or not isinstance(signals, list) or not isinstance(previous_signals, list):
         raise ValueError("Universe and signal payloads must be arrays")
     if summary.get("universe_size") != 500 or summary.get("eligible_count") != len(universe):
@@ -65,6 +78,10 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
     newest_date = max((str(row.get("last_date") or "") for row in universe), default="")
     if not market_date or market_date != newest_date:
         raise ValueError("Summary market date must equal the newest eligible-stock date")
+    if not isinstance(trading_calendar, dict) or not isinstance(trading_calendar.get("trading_days"), list):
+        raise ValueError("Official trading calendar payload is invalid")
+    if market_date not in trading_calendar["trading_days"]:
+        raise ValueError("Summary market_date is missing from the official trading calendar")
     if expected_market_date is not None and market_date != expected_market_date:
         raise ValueError(
             "Refusing stale market payload: "
@@ -81,7 +98,7 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
     if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not symbol for symbol in symbols):
         raise ValueError("Eligible universe contains missing or duplicate symbols")
     symbol_set = set(symbols)
-    if any(row.get("symbol") not in symbol_set or row.get("confirmation_date") != market_date for row in signals):
+    if any(not isinstance(row, dict) or row.get("symbol") not in symbol_set or row.get("confirmation_date") != market_date for row in signals):
         raise ValueError("Signal payload contains an unknown symbol or non-current session")
     if any(
         not isinstance(row, dict)

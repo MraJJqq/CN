@@ -7,7 +7,7 @@ import {createKlineRotationPause} from "./kline/rotation-pause.js?v=cn-common-sy
 import {createTencentLiveQuotes} from "./quotes/tencent-live-quotes.js?v=cn-live-quotes-20261117-5";
 const DATA="./data/",$=id=>document.getElementById(id),lifecycle=createLifecycleScope();
 window.__CN_READY__=false;
-let pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,lastObservedSignalPublication="",signalPollTimer=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false,liveQuoteBySymbol=new Map();
+let exchangeTradingDays=new Set(),tradingCalendarReady=false,pageLifecycle=null,universe=[],signalStocks=[],carouselIndex=0,carouselTimer=null,transitionTimer=null,transitionToken=0,destroyed=false,activeSignalDate="",activeSignalSnapshot=null,signalRefreshToken=0,signalRefreshController=null,lastObservedSignalPublication="",signalPollTimer=null,dailyRefreshTimer=null,marketRefreshTimer=null,marketRefreshBusy=false,liveQuoteBySymbol=new Map();
 const interactionLocks=new Set();let rotationPaused=false,rotationPause=null;
 const ROTATION_START_KEY="cn-last-random-start",SIGNAL_SNAPSHOT_KEY="cn-daily-signal-snapshot-v1",SIGNAL_CHECK_KEY="cn-daily-snapshot-checked-v1",logoFrame=$("logo-frame"),timeframeFrame=$("timeframe-frame");
 const isHidden=()=>pageLifecycle?pageLifecycle.isSuspended():document.hidden;
@@ -124,7 +124,16 @@ async function refreshSignals(){
  }catch(error){if(error?.name==="AbortError"||destroyed||token!==signalRefreshToken)return null;if(!activeSignalDate)ticker.render([],"unavailable");throw error}
  finally{if(signalRefreshController===request)signalRefreshController=null}
 }
+async function loadTradingCalendar(){
+ const response=await fetch(DATA+"trading-calendar.json",{cache:"no-store"});
+ if(!response.ok)throw new Error("official trading calendar unavailable");
+ const calendar=await response.json();
+ if(!Array.isArray(calendar?.trading_days)||!calendar.trading_days.every(day=>/^\d{4}-\d{2}-\d{2}$/.test(day)))throw new Error("official trading calendar payload invalid");
+ exchangeTradingDays=new Set(calendar.trading_days);tradingCalendarReady=true;
+}
 async function boot(){
+ try{await loadTradingCalendar()}catch(error){console.warn("[CN] official trading calendar unavailable; live quote polling remains disabled",error)}
+ if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);marketRefreshTimer=null;
  const saved=readSignalSnapshot();if(saved)applySignalSnapshot(saved);else ticker.render([],"waiting");
  if(!signalStocks.length&&!$("app").classList.contains("is-symbol-transitioning"))sendLogo(null);
  try{const summary=await refreshSignals();lastObservedSignalPublication=summary?.generated_at_utc||""}catch(error){console.warn("[CN] signal initialization failed",error);if(!activeSignalDate)ticker.render([],"unavailable")}
@@ -156,8 +165,9 @@ function scheduleDailyRetry(){
 }
 function stopForegroundTimers(){if(signalPollTimer!==null)clearTimeout(signalPollTimer);if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);if(marketRefreshTimer!==null)clearTimeout(marketRefreshTimer);signalPollTimer=dailyRefreshTimer=marketRefreshTimer=null}
 function isChinaTradingSession(){
- const t=chinaClock(),day=new Date(Date.UTC(t.year,t.month-1,t.day)).getUTCDay(),minutes=t.hour*60+t.minute;
- return day>=1&&day<=5&&((minutes>=570&&minutes<690)||(minutes>=780&&minutes<900));
+ if(!tradingCalendarReady||!exchangeTradingDays.has(chinaCalendarDate()))return false;
+ const t=chinaClock(),minutes=t.hour*60+t.minute;
+ return (minutes>=570&&minutes<690)||(minutes>=780&&minutes<900);
 }
 async function refreshLiveMarket(){
  if(destroyed||isHidden()||!isChinaTradingSession()||marketRefreshBusy)return false;
@@ -196,10 +206,12 @@ async function refreshLiveMarket(){
 }
 function millisecondsUntilNextMarketRefresh(){
  if(isChinaTradingSession())return 300000-(Date.now()%300000);
+ if(!tradingCalendarReady)return 300000;
  const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),base=Date.UTC(t.year,t.month-1,t.day);
  for(let offset=0;offset<8;offset++){
   const day=new Date(base+offset*86400000),weekday=day.getUTCDay();
-  if(weekday===0||weekday===6)continue;
+  const dateKey=[day.getUTCFullYear(),String(day.getUTCMonth()+1).padStart(2,"0"),String(day.getUTCDate()).padStart(2,"0")].join("-");
+  if(weekday===0||weekday===6||!exchangeTradingDays.has(dateKey))continue;
   for(const [hour,minute] of [[9,30],[13,0]]){
    const target=Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate(),hour,minute);
    if(target>now)return Math.max(1000,target-now);

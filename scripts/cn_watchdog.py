@@ -9,6 +9,15 @@ def recovery_marker(day):
 def recovery_is_due(current):
     local=current.astimezone(TZ); due=(datetime.combine(local.date(),DUE)+timedelta(minutes=GRACE_MINUTES)).time()
     return local.weekday()<5 and local.time().replace(tzinfo=None)>=due
+
+def recovery_session_day(current, is_trading_day, previous_trading_day):
+    """Return the latest completed session whose recovery grace period has elapsed."""
+    local=current.astimezone(TZ)
+    today=local.date()
+    cutoff=(datetime.combine(today,DUE)+timedelta(minutes=GRACE_MINUTES)).time()
+    candidate=today if is_trading_day(today) and local.time().replace(tzinfo=None)>=cutoff else previous_trading_day(today)
+    due_at=datetime.combine(candidate,DUE,tzinfo=TZ)+timedelta(minutes=GRACE_MINUTES)
+    return candidate if local>=due_at else None
 def _api():
     repo=os.environ.get("GITHUB_REPOSITORY","").strip()
     if repo.count("/")!=1: raise RuntimeError("GITHUB_REPOSITORY must be owner/repository")
@@ -42,12 +51,11 @@ def _dispatch(api,issues,marker,day):
     except Exception as exc: print(f"CN {day} recovery dispatch ambiguous; lock retained: {exc}")
 def main(now=None):
     api=_api(); current=(now or datetime.now(timezone.utc)).astimezone(TZ)
-    if not recovery_is_due(current):
+    from scripts.trading_calendar import is_a_share_trading_day, previous_a_share_trading_day
+    day=recovery_session_day(current,is_a_share_trading_day,previous_a_share_trading_day)
+    if day is None:
         print("CN daily scan is not due for recovery."); return 0
-    from scripts.trading_calendar import is_a_share_trading_day
-    if not is_a_share_trading_day(current.date()):
-        print("A-share exchange holiday; recovery skipped."); return 0
-    day=current.date(); day_text=day.isoformat(); marker=recovery_marker(day)
+    day_text=day.isoformat(); marker=recovery_marker(day)
     lock_title=f"[CN Watchdog Recovery Lock] {day_text}"
     alert_title="[CN Watchdog] Daily scan recovery failed"
     timeout_title=f"[CN Watchdog] Recovery dispatch registration timed out ({day_text})"

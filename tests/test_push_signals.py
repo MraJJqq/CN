@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
-from push_signals import is_recovery_dispatch,notification_market_date,record_notification_sent,should_skip_duplicate,validate_signal_rows
+from push_signals import is_recovery_dispatch,notification_market_date,record_notification_sent,should_skip_duplicate,should_skip_non_trading_day,validate_signal_rows
 class BarkNotificationPolicyTests(unittest.TestCase):
     def test_manual_run_uses_latest_completed_session_before_close(self):
         now=datetime(2026,11,18,11,30,tzinfo=ZoneInfo("Asia/Shanghai"))
@@ -18,9 +18,11 @@ class BarkNotificationPolicyTests(unittest.TestCase):
             self.assertFalse(should_skip_duplicate("workflow_dispatch","2026-11-18",d))
             self.assertTrue(should_skip_duplicate("schedule","2026-11-18",d))
     def test_recovery_dispatch_uses_current_date_and_daily_dedupe(self):
-        now=datetime(2026,11,18,15,55,tzinfo=ZoneInfo("Asia/Shanghai")); marker="recovery:20261118-1535"
+        now=datetime(2026,11,21,0,15,tzinfo=ZoneInfo("Asia/Shanghai")); marker="recovery:20261120-1535"
         self.assertTrue(is_recovery_dispatch("workflow_dispatch",marker))
-        self.assertEqual(notification_market_date(now,{"market_date":"2026-11-18"},"workflow_dispatch",marker),"2026-11-18")
+        self.assertEqual(notification_market_date(now,{"market_date":"2026-11-20"},"workflow_dispatch",marker),"2026-11-20")
+        with self.assertRaisesRegex(RuntimeError,"recovery target"):
+            notification_market_date(now,{"market_date":"2026-11-19"},"workflow_dispatch",marker)
         with tempfile.TemporaryDirectory() as d:
             record_notification_sent("2026-11-18",3,d)
             self.assertTrue(should_skip_duplicate("workflow_dispatch","2026-11-18",d,marker))
@@ -34,4 +36,10 @@ class BarkNotificationPolicyTests(unittest.TestCase):
     def test_manual_run_requires_market_date(self):
         now=datetime(2026,11,18,11,30,tzinfo=ZoneInfo("Asia/Shanghai"))
         with self.assertRaises(RuntimeError): notification_market_date(now,{},"workflow_dispatch")
+    def test_manual_and_recovery_dispatches_can_push_completed_session_on_weekend(self):
+        self.assertFalse(should_skip_non_trading_day(dispatch=True,is_trading_day=False))
+    def test_automatic_runs_still_skip_weekends_and_holidays(self):
+        self.assertTrue(should_skip_non_trading_day(dispatch=False,is_trading_day=False))
+    def test_automatic_runs_continue_on_trading_days(self):
+        self.assertFalse(should_skip_non_trading_day(dispatch=False,is_trading_day=True))
 if __name__=="__main__": unittest.main()

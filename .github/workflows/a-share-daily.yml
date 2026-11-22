@@ -14,7 +14,7 @@ concurrency:
   group: cn-a-share-daily
   cancel-in-progress: false
 permissions:
-  contents: read
+  contents: write
 jobs:
   scan-and-cache:
     runs-on: ubuntu-24.04
@@ -53,6 +53,22 @@ jobs:
         id: validate
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
         run: python scripts/validate_pages_payload.py
+      - name: Persist latest validated Pages snapshot
+        if: steps.scan.outcome == 'success' && steps.validate.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          store="$RUNNER_TEMP/cn-data-store"
+          git worktree add --detach "$store" HEAD
+          git -C "$store" checkout --orphan cn-data
+          mkdir -p "$store/site"
+          cp -a site/data "$store/site/data"
+          git -C "$store" config user.name "github-actions[bot]"
+          git -C "$store" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$store" add -A
+          git -C "$store" commit -m "Persist latest validated CN market snapshot"
+          git -C "$store" push --force origin HEAD:refs/heads/cn-data
+          echo "Latest validated CN market snapshot persisted to cn-data."
       - name: Check Bark credentials
         id: bark
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')

@@ -36,7 +36,20 @@ jobs:
           set -euo pipefail
           restored=0
           mkdir -p .cn-data-candidates
-          while read -r run_id run_number; do
+          if git fetch origin refs/heads/cn-data:refs/remotes/origin/cn-data; then
+            candidate=".cn-data-candidates/cn-data"
+            mkdir -p "$candidate"
+            if git archive origin/cn-data site/data | tar -x -C "$candidate" && python3 scripts/validate_pages_payload.py --allow-previous-snapshot --data-dir "$candidate/site/data"; then
+              rm -rf site/data
+              mkdir -p site
+              cp -a "$candidate/site/data" site/data
+              echo "Restored latest validated CN snapshot from persistent cn-data branch."
+              restored=1
+            else
+              echo "Persistent cn-data snapshot failed validation; falling back to successful workflow artifacts."
+            fi
+          fi
+          while [ "$restored" -ne 1 ] && read -r run_id run_number; do
             [ -n "$run_id" ] || continue
             candidate=".cn-data-candidates/run-$run_number"
             rm -rf "$candidate"

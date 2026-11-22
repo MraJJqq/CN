@@ -1,5 +1,6 @@
-import {chromium} from "playwright";
-const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
+import {chromium,webkit} from "playwright";
+const browserType=process.env.CN_BROWSER==="webkit"?webkit:chromium;
+const browser=await browserType.launch({headless:true}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
 page.on("pageerror",e=>errors.push(e.message));
 page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
 page.on("requestfailed",r=>{const reason=r.failure()?.errorText||"";if(reason!=="net::ERR_ABORTED")errors.push("request failed: "+r.url()+" "+reason)});
