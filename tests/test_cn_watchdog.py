@@ -4,7 +4,7 @@ from datetime import date,datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scripts.cn_watchdog import recovery_is_due,recovery_marker,recovery_session_day
+from scripts.cn_watchdog import recovery_is_due,recovery_marker,recovery_run_window,recovery_session_day
 TZ=ZoneInfo("Asia/Shanghai")
 class CNWatchdogScheduleTests(unittest.TestCase):
     def test_recovery_starts_at_1550_china_time(self):
@@ -14,6 +14,10 @@ class CNWatchdogScheduleTests(unittest.TestCase):
         self.assertFalse(recovery_is_due(datetime(2026,11,22,16,0,tzinfo=TZ)))
     def test_recovery_marker_is_unique_per_session(self):
         self.assertEqual(recovery_marker(date(2026,11,23)),"recovery:20261123-1535")
+    def test_run_window_includes_delayed_run_after_midnight_but_not_next_close(self):
+        start,end=recovery_run_window(date(2026,11,20))
+        self.assertEqual(start,datetime(2026,11,20,15,20,tzinfo=TZ))
+        self.assertEqual(end,datetime(2026,11,21,15,20,tzinfo=TZ))
     def test_weekend_watchdog_does_not_dispatch_automatic_recovery(self):
         now=datetime(2026,11,22,16,0,tzinfo=TZ)
         is_trading=lambda day: day.weekday()<5

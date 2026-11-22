@@ -6,6 +6,11 @@ from zoneinfo import ZoneInfo
 TZ=ZoneInfo("Asia/Shanghai"); DUE=time(15,35); GRACE_MINUTES=15; LOCK_TIMEOUT_MINUTES=20
 def recovery_marker(day):
     return "recovery:"+datetime.combine(day,DUE,tzinfo=TZ).strftime("%Y%m%d-%H%M")
+
+def recovery_run_window(day):
+    start=datetime.combine(day,DUE,tzinfo=TZ)-timedelta(minutes=GRACE_MINUTES)
+    end=datetime.combine(day+timedelta(days=1),DUE,tzinfo=TZ)-timedelta(minutes=GRACE_MINUTES)
+    return start,end
 def recovery_is_due(current):
     local=current.astimezone(TZ); due=(datetime.combine(local.date(),DUE)+timedelta(minutes=GRACE_MINUTES)).time()
     return local.weekday()<5 and local.time().replace(tzinfo=None)>=due
@@ -63,9 +68,9 @@ def main(now=None):
     timeout_title=f"[CN Watchdog] Recovery dispatch registration timed out ({day_text})"
     runs=(_request(api+"/actions/workflows/a-share-daily.yml/runs?per_page=100") or {}).get("workflow_runs",[])
     issues=_request(api+"/issues?state=open&per_page=100") or []; lock=_issue(issues,lock_title)
-    slot=datetime.combine(day,DUE,tzinfo=TZ)
-    start=slot.astimezone(timezone.utc)-timedelta(minutes=GRACE_MINUTES)
-    end=datetime.combine(day+timedelta(days=1),time.min,tzinfo=TZ).astimezone(timezone.utc)
+    start,end=recovery_run_window(day)
+    start=start.astimezone(timezone.utc)
+    end=end.astimezone(timezone.utc)
     scheduled=[]; recoveries=[]
     for run in runs:
         created=_created(run)
