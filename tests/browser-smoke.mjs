@@ -56,7 +56,8 @@ try{
   };
   const mainFallback=supports(document),frame=document.querySelector("#timeframe-frame"),frameStyle=getComputedStyle(frame),period=frame.contentDocument.querySelector(".tf .period"),periodContainer=frame.contentDocument.querySelector(".tf"),periodContainerStyle=periodContainer?getComputedStyle(periodContainer):null;
   const safeBottom=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--v6-safe-bottom"))||0,frameRect=frame.getBoundingClientRect();
-  const frameFallback=frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%");
+  const supportsDvh=CSS.supports("height","100dvh");
+  const frameFallback=supportsDvh||(frameRect.top<=1&&frameRect.bottom>=innerHeight-safeBottom-2&&frameStyle.clipPath.includes("68.83%"));
   const singlePeriodReady=Boolean(period&&period.textContent.trim()==="1D"&&frame.contentDocument.querySelectorAll(".tf .period").length===1&&frame.contentDocument.querySelectorAll(".tf button").length===0&&periodContainer&&periodContainer.scrollHeight<=periodContainer.clientHeight&&periodContainerStyle.scrollSnapType==="none"&&frameStyle.pointerEvents==="none");
   const fontUrl=new URL("../../fonts/ChakraPetch-Bold.ttf",frame.contentWindow.location.href),fontResponse=await fetch(fontUrl);
   if(!fontResponse.ok)throw new Error("Timeframe Chakra Petch font request failed: "+fontUrl.pathname);
@@ -77,7 +78,7 @@ try{
   send("pointermove",73,cx+100,cy);send("pointerup",73,cx+100,cy);send("pointerup",72,cx-45,cy);
   const pinched=read();
   send("pointerdown",74,cx,cy);send("pointercancel",74,cx,cy);
-  return {mainFallback,frameFallback,singlePeriodReady,timeframeFontLoaded,logoFontLoaded,fontPath:fontUrl.pathname,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
+  return {mainFallback,frameFallback,supportsDvh,singlePeriodReady,timeframeFontLoaded,logoFontLoaded,fontPath:fontUrl.pathname,dragChanged:Boolean(before&&dragged&&(before.anchorTime!==dragged.anchorTime||before.anchorOffset!==dragged.anchorOffset)),pinchChanged:Boolean(Number.isFinite(beforePinch)&&Number.isFinite(pinched?.barW)&&pinched.barW>beforePinch*1.1),before,dragged,pinched};
  });
  if(!viewportInteraction.mainFallback||!viewportInteraction.frameFallback||!viewportInteraction.singlePeriodReady||!viewportInteraction.timeframeFontLoaded||!viewportInteraction.logoFontLoaded)throw new Error("Fullscreen fallback or residue-free static 1D period contract failed: "+JSON.stringify(viewportInteraction));
  if(!viewportInteraction.dragChanged||!viewportInteraction.pinchChanged)throw new Error("K-line drag/pinch interaction contract failed: "+JSON.stringify(viewportInteraction));
