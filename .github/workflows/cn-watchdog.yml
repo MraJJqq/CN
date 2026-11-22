@@ -24,6 +24,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Detect missed CN daily scan and dispatch recovery
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: \${{ github.repository }}
         run: python -m scripts.cn_watchdog
