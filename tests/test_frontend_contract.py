@@ -180,10 +180,12 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("cn-timeframe-static-20261116-4",self.index)
 
  def test_logo_and_timeframe_use_media_load_gate_and_dark_first_paint(self):
-  self.assertIn('<style id="cn-first-paint-guard">',self.index)
-  self.assertIn('html,body{background:#101010;color-scheme:dark}',self.index)
-  self.assertIn('#logo-frame,#timeframe-frame{background:#101010;opacity:0}',self.index)
-  self.assertIn('html,body{background:#101010',self.module_css)
+  self.assertNotIn('cn-first-paint-guard',self.index)
+  app_css=(ROOT/"site/assets/app.css").read_text(encoding="utf-8")
+  self.assertIn('background:#0B1020',app_css)
+  self.assertIn('#app{isolation:isolate;background:#0B1020}',app_css)
+  self.assertIn('html,body{background:#0B1020',self.module_css)
+  self.assertIn('#logo-frame{z-index:10;display:block;background:transparent',self.module_css)
   self.assertNotIn("function revealFrame(",self.app)
   self.assertNotIn("revealFrame(logoFrame)",self.app)
   self.assertIn("onload=\"this.classList.add('is-ready')\"",self.index)
