@@ -1,6 +1,6 @@
 # VEGAS V6 — System Modules & Operating Flows
 
-This directory documents the seven V6 systems. Its baseline source snapshot was captured from V6 commit `168f1b40a29d1d0e72ad6aa325670404da1f3a30`; the full-screen dynamic system and directly coupled host styles were synchronized from V6 commit `d7f2fe3bee7d7fad00125b233b30bee5af1489c9`. The synchronized files are byte-identical to their current V6 counterparts. The GitHub Pages workflow and generated background output are build/deployment artifacts and are not part of this snapshot; background artwork and its generator are maintained separately under `../Backgrounds/`. This Media-specific operating-flow document is not part of the V6 runtime repository.
+This directory documents the seven V6 systems. Its baseline source snapshot was captured from V6 commit `168f1b40a29d1d0e72ad6aa325670404da1f3a30`; the full-screen dynamic system and directly coupled host styles were synchronized from V6 commit `d7f2fe3bee7d7fad00125b233b30bee5af1489c9`. The synchronized files are byte-identical to their current V6 counterparts. The GitHub Pages workflow is a build/deployment artifact and is not part of this snapshot. The page background is a solid `#0B1020`; no separate background artwork or generator is maintained. This Media-specific operating-flow document is not part of the V6 runtime repository.
 
 ## Scope
 
@@ -14,7 +14,7 @@ This package records the seven V6 systems:
 6. V12 signal feed and bottom ticker system.
 7. Full-screen dynamic system: responsive viewport sizing, portrait/landscape rules and safe-area adaptation.
 
-Background artwork is maintained in `../Backgrounds/`; the background-generation source is maintained in `../Backgrounds/source/`. These assets are intentionally stored outside this V6 runtime snapshot.
+The page background is a solid `#0B1020` defined by page CSS; no separate background artwork or generator is used.
 
 ## Page boot and system orchestration
 
@@ -141,7 +141,7 @@ Operating flow:
 
 ## Validation checklist
 
-- Confirm all relative imports and runtime asset paths resolve within this V6 package; background artwork and its generator are maintained separately under `../Backgrounds/`.
+- Confirm all relative imports and runtime asset paths resolve within this V6 package; the page background is the CSS solid color `#0B1020`.
 - Confirm all 24 symbols have a Gate contract mapping and local logo mapping.
 - Confirm all four intervals propagate from selector → host runtime → K-line controller → Logo countdown.
 - Confirm hidden-page suspension stops polling/animation work and visible-page restoration resumes it.
