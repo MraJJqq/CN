@@ -18,7 +18,7 @@ class BarkNotificationPolicyTests(unittest.TestCase):
             self.assertFalse(should_skip_duplicate("workflow_dispatch","2026-11-18",d))
             self.assertTrue(should_skip_duplicate("schedule","2026-11-18",d))
     def test_recovery_dispatch_uses_current_date_and_daily_dedupe(self):
-        now=datetime(2026,11,21,0,15,tzinfo=ZoneInfo("Asia/Shanghai")); marker="recovery:20261120-1535"
+        now=datetime(2026,11,23,15,55,tzinfo=ZoneInfo("Asia/Shanghai")); marker="recovery:20261120-1535"
         self.assertTrue(is_recovery_dispatch("workflow_dispatch",marker))
         self.assertEqual(notification_market_date(now,{"market_date":"2026-11-20"},"workflow_dispatch",marker),"2026-11-20")
         with self.assertRaisesRegex(RuntimeError,"recovery target"):
@@ -36,10 +36,10 @@ class BarkNotificationPolicyTests(unittest.TestCase):
     def test_manual_run_requires_market_date(self):
         now=datetime(2026,11,18,11,30,tzinfo=ZoneInfo("Asia/Shanghai"))
         with self.assertRaises(RuntimeError): notification_market_date(now,{},"workflow_dispatch")
-    def test_manual_and_recovery_dispatches_can_push_completed_session_on_weekend(self):
-        self.assertFalse(should_skip_non_trading_day(dispatch=True,is_trading_day=False))
-    def test_automatic_runs_still_skip_weekends_and_holidays(self):
-        self.assertTrue(should_skip_non_trading_day(dispatch=False,is_trading_day=False))
+    def test_manual_run_can_push_completed_session_on_weekend(self):
+        self.assertFalse(should_skip_non_trading_day(manual=True,is_trading_day=False))
+    def test_automatic_scheduled_and_recovery_runs_still_skip_weekends(self):
+        self.assertTrue(should_skip_non_trading_day(manual=False,is_trading_day=False))
     def test_automatic_runs_continue_on_trading_days(self):
-        self.assertFalse(should_skip_non_trading_day(dispatch=False,is_trading_day=True))
+        self.assertFalse(should_skip_non_trading_day(manual=False,is_trading_day=True))
 if __name__=="__main__": unittest.main()

@@ -14,11 +14,11 @@ class CNWatchdogScheduleTests(unittest.TestCase):
         self.assertFalse(recovery_is_due(datetime(2026,11,22,16,0,tzinfo=TZ)))
     def test_recovery_marker_is_unique_per_session(self):
         self.assertEqual(recovery_marker(date(2026,11,23)),"recovery:20261123-1535")
-    def test_weekend_watchdog_targets_previous_trading_session(self):
+    def test_weekend_watchdog_does_not_dispatch_automatic_recovery(self):
         now=datetime(2026,11,22,16,0,tzinfo=TZ)
         is_trading=lambda day: day.weekday()<5
         previous=lambda day: date(2026,11,20)
-        self.assertEqual(recovery_session_day(now,is_trading,previous),date(2026,11,20))
+        self.assertIsNone(recovery_session_day(now,is_trading,previous))
     def test_before_today_recovery_cutoff_targets_previous_session(self):
         now=datetime(2026,11,23,15,45,tzinfo=TZ)
         is_trading=lambda day: day.weekday()<5

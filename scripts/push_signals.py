@@ -32,8 +32,8 @@ def format_bark_body(names: list[str],line_width: int=BARK_LINE_WIDTH) -> str:
     return "\n".join(lines) if lines else "▰ No change ▰"
 def is_recovery_dispatch(event_name: str,recovery_slot: str="") -> bool:
     return event_name=="workflow_dispatch" and recovery_slot.startswith("recovery:")
-def should_skip_non_trading_day(dispatch: bool,is_trading_day: bool) -> bool:
-    return not dispatch and not is_trading_day
+def should_skip_non_trading_day(manual: bool,is_trading_day: bool) -> bool:
+    return not manual and not is_trading_day
 def notification_market_date(now: datetime,summary: dict,event_name: str,recovery_slot: str="") -> str:
     if event_name=="workflow_dispatch":
         market_date=str(summary.get("market_date") or "").strip()
@@ -55,10 +55,10 @@ def validate_signal_rows(rows: object,market_date: str) -> list[dict]:
 def main() -> int:
     now=datetime.now(ZoneInfo("Asia/Shanghai")); today=now.date()
     event_name=os.environ.get("GITHUB_EVENT_NAME","schedule"); recovery_slot=os.environ.get("RECOVERY_SLOT","").strip()
-    dispatch=event_name=="workflow_dispatch"
-    if should_skip_non_trading_day(dispatch,is_a_share_trading_day(today)):
+    manual=event_name=="workflow_dispatch" and not is_recovery_dispatch(event_name,recovery_slot)
+    if should_skip_non_trading_day(manual,is_a_share_trading_day(today)):
         print(f"{today.isoformat()} is not an A-share trading day; automatic Bark push skipped."); return 0
-    if not dispatch and now.time().replace(tzinfo=None)<dt_time(15,30):
+    if not manual and now.time().replace(tzinfo=None)<dt_time(15,30):
         print("A-share market has not closed; scheduled Bark push skipped."); return 0
     summary=json.loads(Path("site/data/summary.json").read_text(encoding="utf-8"))
     expected=notification_market_date(now,summary,event_name,recovery_slot)

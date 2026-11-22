@@ -14,8 +14,10 @@ def recovery_session_day(current, is_trading_day, previous_trading_day):
     """Return the latest completed session whose recovery grace period has elapsed."""
     local=current.astimezone(TZ)
     today=local.date()
+    if not is_trading_day(today):
+        return None
     cutoff=(datetime.combine(today,DUE)+timedelta(minutes=GRACE_MINUTES)).time()
-    candidate=today if is_trading_day(today) and local.time().replace(tzinfo=None)>=cutoff else previous_trading_day(today)
+    candidate=today if local.time().replace(tzinfo=None)>=cutoff else previous_trading_day(today)
     due_at=datetime.combine(candidate,DUE,tzinfo=TZ)+timedelta(minutes=GRACE_MINUTES)
     return candidate if local>=due_at else None
 def _api():
