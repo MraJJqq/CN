@@ -2,6 +2,7 @@
 """Validate the complete static payload before Bark notifications or Pages deployment."""
 from __future__ import annotations
 
+import argparse
 import gzip
 import json
 import sys
@@ -125,16 +126,26 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    run_date = china_today()
-    expected_session = (
-        run_date
-        if is_a_share_trading_day(run_date)
-        and now.time().replace(tzinfo=None) >= dt_time(15, 30)
-        else previous_a_share_trading_day(run_date)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--allow-previous-snapshot",
+        action="store_true",
+        help="Allow an older market date for frontend-only publication while retaining every integrity check.",
     )
-    expected = expected_session.isoformat()
-    result = validate_payload(root / "site" / "data", expected_market_date=expected)
+    parser.add_argument("--data-dir", type=Path, default=root / "site" / "data")
+    args = parser.parse_args()
+    expected = None
+    if not args.allow_previous_snapshot:
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+        run_date = china_today()
+        expected_session = (
+            run_date
+            if is_a_share_trading_day(run_date)
+            and now.time().replace(tzinfo=None) >= dt_time(15, 30)
+            else previous_a_share_trading_day(run_date)
+        )
+        expected = expected_session.isoformat()
+    result = validate_payload(args.data_dir, expected_market_date=expected)
     print(
         "Pages payload verified: "
         f'{result["cards"]} CN500 cards, {result["eligible"]} eligible charts, '

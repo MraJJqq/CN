@@ -35,9 +35,9 @@ jobs:
           pip-audit -r requirements.txt
       - name: Test backend data and frontend system contracts
         run: python -m unittest discover -s tests -v
-      - name: Check A-share trading calendar
+      - name: Resolve latest completed A-share session
         id: calendar
-        run: python scripts/trading_calendar.py --write site/data/trading-calendar.json --github-output "$GITHUB_OUTPUT"
+        run: python scripts/trading_calendar.py --latest-completed-session --write site/data/trading-calendar.json --github-output "$GITHUB_OUTPUT"
       - name: Restore Tencent CN500 cache
         uses: actions/cache/restore@v6
         with:
@@ -48,7 +48,7 @@ jobs:
       - name: Backfill or incrementally update Tencent daily history
         id: scan
         if: steps.calendar.outputs.is-trading-day == 'true'
-        run: python scripts/a_share_cache.py --workers 4 --cache-dir .cache/cn500-tencent-qfq
+        run: python scripts/a_share_cache.py --workers 4 --cache-dir .cache/cn500-tencent-qfq --as-of "${{ steps.calendar.outputs.trade-date }}"
       - name: Validate complete Pages data payload
         id: validate
         if: steps.scan.outcome == 'success' && steps.calendar.outputs.is-trading-day == 'true'

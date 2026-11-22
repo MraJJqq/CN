@@ -204,14 +204,14 @@ def build_scan_diagnostics(good,passed,cache_dir,started_at):
 
 def main():
  scan_started=time.monotonic()
- ap=argparse.ArgumentParser();ap.add_argument("--universe-file",default="config/cn500.codes.gz.b64");ap.add_argument("--cache-dir",default=".cache/cn500-tencent-qfq");ap.add_argument("--workers",type=int,default=4);ap.add_argument("--as-of",default=china_today().isoformat());ap.add_argument("--out",default="results/a-share");a=ap.parse_args()
+ ap=argparse.ArgumentParser();ap.add_argument("--universe-file",default="config/cn500.codes.gz.b64");ap.add_argument("--cache-dir",default=".cache/cn500-tencent-qfq");ap.add_argument("--workers",type=int,default=4);ap.add_argument("--as-of",default=None,help="Use this exact completed SSE session date");ap.add_argument("--out",default="results/a-share");a=ap.parse_args()
  if a.workers<1:ap.error("--workers must be positive")
- run_date=date.fromisoformat(a.as_of)
+ run_date=date.fromisoformat(a.as_of) if a.as_of else china_today()
  if not is_a_share_trading_day(run_date):
   print(f"{run_date.isoformat()} is not an A-share trading day; Tencent scan skipped.",flush=True)
   return
  local_now=datetime.now().astimezone(ZoneInfo("Asia/Shanghai"))
- end_date=latest_completed_session(run_date,local_now).isoformat()
+ end_date=run_date.isoformat() if a.as_of else latest_completed_session(run_date,local_now).isoformat()
  print(f"Using last completed A-share session: {end_date}; excluding the in-progress current-day candle.",flush=True)
  symbols=load_universe(a.universe_file);Path(a.cache_dir).mkdir(parents=True,exist_ok=True);names=read_names(symbols);items=[{"symbol":s,"name":names[s]} for s in symbols]
  n=min(a.workers,len(items));size=(len(items)+n-1)//n;chunks=[items[i:i+size] for i in range(0,len(items),size)];Path(a.cache_dir).mkdir(parents=True,exist_ok=True)

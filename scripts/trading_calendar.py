@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time as dt_time
 from functools import lru_cache
 from html.parser import HTMLParser
 from pathlib import Path
@@ -40,7 +40,15 @@ def china_today() -> date:
     return datetime.now(CHINA_TZ).date()
 
 
-def _fetch_exchange_calendar_page() -> str:
+def latest_completed_session(now: datetime | None = None) -> date:
+    local_now = (now or datetime.now(CHINA_TZ)).astimezone(CHINA_TZ)
+    day = local_now.date()
+    if is_a_share_trading_day(day) and local_now.time().replace(tzinfo=None) >= dt_time(15, 30):
+        return day
+    return previous_a_share_trading_day(day)
+
+
+def _fetch_exchange_calendar_page()
     response = requests.get(
         SSE_CALENDAR_URL,
         headers={
@@ -149,11 +157,16 @@ def build_status(day: date) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", default=china_today().isoformat())
+    parser.add_argument(
+        "--latest-completed-session",
+        action="store_true",
+        help="Resolve the most recent completed SSE session, including when a scheduled run starts after midnight.",
+    )
     parser.add_argument("--write", default="site/data/trading-calendar.json")
     parser.add_argument("--github-output", default="")
     args = parser.parse_args()
 
-    day = date.fromisoformat(args.date)
+    day = latest_completed_session() if args.latest_completed_session else date.fromisoformat(args.date)
     status = build_status(day)
 
     output = Path(args.write)

@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import date,datetime
 from zoneinfo import ZoneInfo
 from unittest.mock import patch
-from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days,exchange_closed_days
+from scripts.trading_calendar import is_a_share_trading_day,previous_a_share_trading_day,upcoming_trading_days,exchange_closed_days,latest_completed_session as calendar_latest_completed_session
 from scripts.a_share_cache import require_complete_fetch,fetch_cached,cache_paths,atomic_json,SOURCE,SCHEMA,latest_completed_session,build_scan_diagnostics,analyze_one
 from scripts.push_signals import bark_marker_path,notification_already_sent,record_notification_sent
 from scripts.a_share_cache import to_tencent_symbol,parse_tencent_quote_text,merge_frames,through_date,valid_bars,excluded_name,ema,normalize
@@ -23,6 +23,9 @@ class TradingCalendarTests(unittest.TestCase):
  @classmethod
  def tearDownClass(cls):
   cls.calendar_patch.stop();exchange_closed_days.cache_clear()
+ def test_delayed_scheduled_run_after_midnight_uses_latest_completed_session(self):
+  now=datetime(2026,11,21,0,18,tzinfo=ZoneInfo("Asia/Shanghai"))
+  self.assertEqual(calendar_latest_completed_session(now),date(2026,11,20))
  def test_after_close_uses_current_completed_session(self):
   now=datetime(2026,11,12,16,30,tzinfo=ZoneInfo("Asia/Shanghai"))
   self.assertEqual(latest_completed_session(date(2026,11,12),now),date(2026,11,12))
@@ -246,7 +249,11 @@ class WorkflowReliabilityTests(unittest.TestCase):
   self.assertIn("continue-on-error: true",scan)
   self.assertIn("steps.bark-push.outcome == 'failure'",scan)
   self.assertIn("if: always() && needs.scan-and-cache.outputs.has-data",scan)
-  self.assertIn("rm -rf .cn-data-artifact site/data",publish)
+  self.assertIn("--latest-completed-session",scan)
+  self.assertIn('--as-of "${{ steps.calendar.outputs.trade-date }}"',scan)
+  self.assertIn("--allow-previous-snapshot --data-dir",publish)
+  self.assertIn("--limit 1000",publish)
+  self.assertNotIn("rm -rf .cn-data-artifact site/data",publish)
   self.assertNotIn("rm -rf .cc-data-artifact",publish)
   self.assertIn("cancel-in-progress: false",scan)
   self.assertIn("cancel-in-progress: false",publish)
