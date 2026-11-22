@@ -48,7 +48,7 @@ def latest_completed_session(now: datetime | None = None) -> date:
     return previous_a_share_trading_day(day)
 
 
-def _fetch_exchange_calendar_page()
+def _fetch_exchange_calendar_page() -> str:
     response = requests.get(
         SSE_CALENDAR_URL,
         headers={
