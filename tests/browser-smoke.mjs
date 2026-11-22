@@ -26,7 +26,7 @@ try{
  });
  console.log("CN browser diagnostics:",JSON.stringify(data));
  if(data.bars<1||data.active!==data.expected||!data.cardSnapshotAt||!data.ticker||!data.visible)throw new Error("A-share data/card/ticker/module visibility contract failed");
- if(data.backgroundState["#app"]!=="rgb(16, 16, 16)")throw new Error("CN main container background must remain #101010: "+JSON.stringify(data.backgroundState));
+ if(data.backgroundState["#app"]!=="rgb(11, 16, 32)")throw new Error("CN main container background must remain #0B1020: "+JSON.stringify(data.backgroundState));
  if(Object.values(data.transparentState).some(value=>value!=="rgba(0, 0, 0, 0)"))throw new Error("CN module containers must remain transparent: "+JSON.stringify(data.transparentState));
  const logoAssetCheck=await page.evaluate(async()=>{const response=await fetch("./assets/Brand/VEGAS-Logo.svg");if(!response.ok)throw new Error("VEGAS logo SVG unavailable");const source=await response.text();const doc=new DOMParser().parseFromString(source,"image/svg+xml");if(doc.querySelector("parsererror"))throw new Error("VEGAS logo SVG is invalid XML");const background=[...doc.querySelectorAll("rect")].find(e=>Number(e.getAttribute("width"))>=200&&Number(e.getAttribute("height"))>=200&&e.getAttribute("fill")&&e.getAttribute("fill")!=="none");return{hasOpaqueFullCanvasBackground:Boolean(background)}});if(logoAssetCheck.hasOpaqueFullCanvasBackground)throw new Error("VEGAS logo SVG must not contain an opaque full-canvas background rectangle");
  const stress=await page.evaluate(({allCardSymbols,signalSymbols})=>{const start=performance.now();const accepted=window.setCardOrder(allCardSymbols);const elapsed=performance.now()-start;const count=document.querySelectorAll("#vp>.c").length;const restored=window.setCardOrder(signalSymbols);return{accepted,elapsed,count,restored,restoredCount:document.querySelectorAll("#vp>.c").length}},{allCardSymbols:data.allCardSymbols,signalSymbols:data.signalSymbols});
@@ -102,7 +102,7 @@ try{
  const firstPaintGate=await page.evaluate(()=>({modules:Object.fromEntries(["#logo-frame","#timeframe-frame"].map(s=>{const e=document.querySelector(s);return[s,{ready:e.classList.contains("is-ready"),opacity:Number(getComputedStyle(e).opacity)}]})),backgrounds:Object.fromEntries(["html","body","#app"].map(s=>[s,getComputedStyle(document.querySelector(s)).backgroundColor]))}));
  if(!delayedFrameRequests.some(x=>x.includes("/logo/logo.html"))||!delayedFrameRequests.some(x=>x.includes("/timeframe-switch/index.html")))throw new Error("Delayed iframe load gate was not exercised");
  if(Object.values(firstPaintGate.modules).some(x=>x.ready||x.opacity>0.01))throw new Error("Logo/timeframe iframe became visible before load completed: "+JSON.stringify(firstPaintGate));
- if(firstPaintGate.backgrounds["#app"]!=="rgb(16, 16, 16)")throw new Error("Dark full-screen app background missing during iframe load: "+JSON.stringify(firstPaintGate));
+ if(firstPaintGate.backgrounds["#app"]!=="rgb(11, 16, 32)")throw new Error("Unified #0B1020 full-screen app background missing during iframe load: "+JSON.stringify(firstPaintGate));
  await page.waitForFunction(()=>["#logo-frame","#timeframe-frame"].every(s=>document.querySelector(s)?.classList.contains("is-ready")),{timeout:15000});
  await page.unroute("**/assets/modules/logo/logo.html*",delayFrame);
  await page.unroute("**/assets/modules/timeframe-switch/index.html*",delayFrame);
