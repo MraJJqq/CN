@@ -59,7 +59,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('"signals.previous.json"',self.app)
   self.assertIn('ticker.render(next,"ready")',self.app);self.assertNotIn("ticker.render(next.length?next:snapshot.previous_signals",self.app)
   self.assertNotIn('next.length?"ready":"previous"',self.app)
-  self.assertIn("cn-signal-live-refresh-20261118-1",self.index)
+  self.assertIn("cn-calendar-holiday-20261122-1",self.index)
   self.assertIn("value.checked_on!==chinaCalendarDate()",self.app)
  def test_fullscreen_panel_geometry(self):
   for x in ("#kline-host","#rolling-cards-frame","#signal-ticker","safe-area-inset-bottom"):self.assertIn(x,self.media)
@@ -185,7 +185,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn('background:#0B1020',app_css)
   self.assertIn('#app{isolation:isolate;background:#0B1020}',app_css)
   self.assertNotIn('html,body{background:#0B1020',self.module_css)
-  self.assertIn('html,body{background:#0B1020',app_css)
+  self.assertIn('html,body{width:100%;height:100%;margin:0;background:#0B1020',app_css)
   self.assertIn('#logo-frame{z-index:10;display:block;background:transparent',self.module_css)
   self.assertNotIn("function revealFrame(",self.app)
   self.assertNotIn("revealFrame(logoFrame)",self.app)
