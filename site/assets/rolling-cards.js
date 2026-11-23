@@ -68,11 +68,11 @@ function flush(i){
 }
 
 /* ---- 布局（尺寸变化时才算） ---- */
-var Wd=0,Hd=0,bs=1,Rx=1,Ry=0,x0=0,y0=0;
+var Wd=0,Hd=0,layoutStep=0,bs=1,Rx=1,Ry=0,x0=0,y0=0;
 function layout(){
   var nextWidth=vp.clientWidth,nextHeight=vp.clientHeight;
-  if(nextWidth===Wd&&nextHeight===Hd)return;
-  Wd=nextWidth;Hd=nextHeight;
+  if(nextWidth===Wd&&nextHeight===Hd&&step===layoutStep)return;
+  Wd=nextWidth;Hd=nextHeight;layoutStep=step;
   /* Match V9/Backup responsive card sizing while retaining CN's dynamic signal count. */
   SHOW=Wd<500?2.2:Wd<900?2.8:3.6;
   A=SHOW*step;

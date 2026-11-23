@@ -80,6 +80,8 @@ class MediaParityTests(unittest.TestCase):
   cards=self.read("site/assets/rolling-cards.js")
   for marker in ("function createCard","function fling(","setPointerCapture","pointerdown","pointermove","pointerup","wheel","VEGAS_CARD_SELECT","VEGAS_CARD_INTERACTION","IntersectionObserver","ResizeObserver","visibilitychange","pagehide","pageshow","window.setCardOrder"):
    self.assertIn(marker,cards)
+  self.assertIn("var unchanged=symbols.length===activeCount",cards)
+  self.assertIn("step===layoutStep",cards)
 
   # Logo: preserve staged transitions and lifecycle-safe A-share calendar countdown.
   logo=self.read("site/assets/modules/logo/logo.js")
