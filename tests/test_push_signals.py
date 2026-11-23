@@ -4,8 +4,12 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
-from push_signals import is_recovery_dispatch,notification_market_date,record_notification_sent,should_skip_duplicate,should_skip_non_trading_day,validate_signal_rows
+from push_signals import BARK_TITLE,format_bark_body,is_recovery_dispatch,notification_market_date,record_notification_sent,should_skip_duplicate,should_skip_non_trading_day,validate_signal_rows
 class BarkNotificationPolicyTests(unittest.TestCase):
+    def test_bark_template_matches_vegasbark(self):
+        self.assertEqual(BARK_TITLE,"▸▸ 𝐕𝐞𝐠𝐚𝐬 𝐒𝐢𝐠𝐧𝐚𝐥 ◂◂")
+        self.assertEqual(format_bark_body(["AAPL","NVDA"]), "AAPL ▰\u00a0NVDA")
+        self.assertEqual(format_bark_body([]), "𝐍𝐨 𝐒𝐢𝐠𝐧𝐚𝐥")
     def test_manual_run_uses_latest_completed_session_before_close(self):
         now=datetime(2026,11,18,11,30,tzinfo=ZoneInfo("Asia/Shanghai"))
         self.assertEqual(notification_market_date(now,{"market_date":"2026-11-17"},"workflow_dispatch"),"2026-11-17")

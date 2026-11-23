@@ -7,7 +7,9 @@ try:
     from .trading_calendar import is_a_share_trading_day
 except ImportError:
     from trading_calendar import is_a_share_trading_day
-BARK_LINE_WIDTH=32
+BARK_TITLE="▸▸ 𝐕𝐞𝐠𝐚𝐬 𝐒𝐢𝐠𝐧𝐚𝐥 ◂◂"
+BARK_NBSP="\u00A0"
+BARK_SEPARATOR="▰"
 def bark_marker_path(market_date: str,directory: str | Path | None=None) -> Path:
     root=Path(directory or os.environ.get("BARK_DEDUPE_DIR",".cache/cn500-tencent-qfq"))
     return root/f"bark-pushed-{market_date}.json"
@@ -22,14 +24,9 @@ def record_notification_sent(market_date: str,names_count: int,directory: str | 
     temporary=marker.with_suffix(marker.suffix+".tmp")
     temporary.write_text(json.dumps({"market_date":market_date,"status":"sent","names_count":names_count,"sent_at":datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()},ensure_ascii=False),encoding="utf-8")
     os.replace(temporary,marker); return marker
-def format_bark_body(names: list[str],line_width: int=BARK_LINE_WIDTH) -> str:
-    lines=[]; current=""
-    for name in names:
-        unit=f"▰ {name} ▰"; candidate=f"{current} {unit}" if current else unit
-        if current and len(candidate)>line_width: lines.append(current); current=unit
-        else: current=candidate
-    if current: lines.append(current)
-    return "\n".join(lines) if lines else "▰ No change ▰"
+def format_bark_body(names: list[str]) -> str:
+    if not names: return "𝐍𝐨 𝐒𝐢𝐠𝐧𝐚𝐥"
+    return f" {BARK_SEPARATOR}{BARK_NBSP}".join(names)
 def is_recovery_dispatch(event_name: str,recovery_slot: str="") -> bool:
     return event_name=="workflow_dispatch" and recovery_slot.startswith("recovery:")
 def should_skip_non_trading_day(manual: bool,is_trading_day: bool) -> bool:
@@ -76,7 +73,7 @@ def main() -> int:
         name=str(row.get("name") or "").strip()
         if name and name not in seen: names.append(name); seen.add(name)
     body=format_bark_body(names); server=os.environ.get("BARK_SERVER","").strip().rstrip("/") or "https://api.day.app"
-    payload=json.dumps({"device_key":key,"body":body,"level":"active"},ensure_ascii=False).encode("utf-8")
+    payload=json.dumps({"device_key":key,"title":BARK_TITLE,"body":body,"level":"active"},ensure_ascii=False).encode("utf-8")
     request=urllib.request.Request(f"{server}/push",data=payload,headers={"Content-Type":"application/json; charset=utf-8","User-Agent":"CN-CN500/1.0"},method="POST")
     with urllib.request.urlopen(request,timeout=20) as response:
         response_body=response.read().decode("utf-8","replace")
