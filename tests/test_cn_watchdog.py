@@ -51,6 +51,12 @@ class CNWatchdogScheduleTests(unittest.TestCase):
     def test_recovery_marker_uses_ten_am_slot(self):
         self.assertEqual(cn_watchdog.recovery_marker(date(2026, 11, 23)), "recovery:20261123-1000")
 
+    def test_exchange_holiday_never_triggers_recovery(self):
+        current = datetime(2026, 11, 23, 10, 15, tzinfo=TZ)
+        self.assertIsNone(
+            cn_watchdog.recovery_session_day(current, lambda day: False, previous_trading_day)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json, os, urllib.request
-from datetime import date, datetime, time as dt_time
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 try:
@@ -32,16 +32,14 @@ def is_recovery_dispatch(event_name: str,recovery_slot: str="") -> bool:
 def should_skip_non_trading_day(manual: bool,is_trading_day: bool) -> bool:
     return not manual and not is_trading_day
 def notification_market_date(now: datetime,summary: dict,event_name: str,recovery_slot: str="") -> str:
-    if event_name=="workflow_dispatch":
-        market_date=str(summary.get("market_date") or "").strip()
-        if not market_date: raise RuntimeError("Refusing CN Bark push: summary has no completed market_date")
-        if is_recovery_dispatch(event_name,recovery_slot):
-            try: target=datetime.strptime(recovery_slot.split(":",1)[1].split("-",1)[0],"%Y%m%d").date().isoformat()
-            except (ValueError,IndexError): raise RuntimeError("Refusing CN Bark push: invalid watchdog recovery marker")
-            if market_date!=target: raise RuntimeError(f"Refusing CN Bark push: recovery target={target}, summary market_date={market_date}")
-            return target
-        return market_date
-    return now.date().isoformat()
+    # The 10:00 scan represents the latest completed market session.
+    # A recovery marker identifies the scan day, not the data session.
+    if is_recovery_dispatch(event_name,recovery_slot):
+        try: datetime.strptime(recovery_slot.split(":",1)[1].split("-",1)[0],"%Y%m%d")
+        except (ValueError,IndexError): raise RuntimeError("Refusing CN Bark push: invalid watchdog recovery marker")
+    market_date=str(summary.get("market_date") or "").strip()
+    if not market_date: raise RuntimeError("Refusing CN Bark push: summary has no completed market_date")
+    return market_date
 def should_skip_duplicate(event_name: str,market_date: str,directory: str | Path | None=None,recovery_slot: str="") -> bool:
     manual=event_name=="workflow_dispatch" and not is_recovery_dispatch(event_name,recovery_slot)
     return not manual and notification_already_sent(market_date,directory)
@@ -55,8 +53,6 @@ def main() -> int:
     manual=event_name=="workflow_dispatch" and not is_recovery_dispatch(event_name,recovery_slot)
     if should_skip_non_trading_day(manual,is_a_share_trading_day(today)):
         print(f"{today.isoformat()} is not an A-share trading day; automatic Bark push skipped."); return 0
-    if not manual and now.time().replace(tzinfo=None)<dt_time(15,30):
-        print("A-share market has not closed; scheduled Bark push skipped."); return 0
     summary=json.loads(Path("site/data/summary.json").read_text(encoding="utf-8"))
     expected=notification_market_date(now,summary,event_name,recovery_slot)
     if not is_a_share_trading_day(date.fromisoformat(expected)):
