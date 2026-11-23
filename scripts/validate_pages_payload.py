@@ -95,9 +95,27 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
         raise ValueError("Summary previous_market_date does not match the official prior SSE session")
 
     symbols = [row.get("symbol") for row in universe if isinstance(row, dict)]
-    if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not symbol for symbol in symbols):
+    if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not isinstance(symbol, str) or not symbol for symbol in symbols):
         raise ValueError("Eligible universe contains missing or duplicate symbols")
     symbol_set = set(symbols)
+
+    # Every ready card must have a matching chart/universe row; unavailable
+    # cards are permitted for legitimate exclusions such as ST or suspension.
+    cards_by_symbol = {row["symbol"]: row for row in cards}
+    ready_symbols = {row["symbol"] for row in cards if row.get("status", "ready") == "ready"}
+    if ready_symbols != symbol_set:
+        missing_cards = sorted(symbol_set - ready_symbols)[:10]
+        orphan_cards = sorted(ready_symbols - symbol_set)[:10]
+        raise ValueError(
+            "Ready CN500 cards and eligible universe disagree: "
+            f"missing_ready={missing_cards}, orphan_ready={orphan_cards}"
+        )
+    for stock in universe:
+        card = cards_by_symbol[stock["symbol"]]
+        if card.get("last_date") != stock.get("last_date"):
+            raise ValueError(f"CN500 card date does not match eligible data: {stock['symbol']}")
+        if card.get("valid_bars") != stock.get("valid_bars"):
+            raise ValueError(f"CN500 card history count does not match eligible data: {stock['symbol']}")
     if any(not isinstance(row, dict) or row.get("symbol") not in symbol_set or row.get("confirmation_date") != market_date for row in signals):
         raise ValueError("Signal payload contains an unknown symbol or non-current session")
     if any(
@@ -124,13 +142,34 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
                 chart = json.load(handle)
         except (OSError, EOFError, json.JSONDecodeError) as error:
             raise ValueError(f"Invalid compressed chart: {path.name}") from error
-        if chart.get("symbol") != stock["symbol"] or chart.get("last_date") != stock.get("last_date") or not chart.get("bars"):
+        bars = chart.get("bars")
+        if chart.get("symbol") != stock["symbol"] or chart.get("last_date") != stock.get("last_date") or not isinstance(bars, list) or not bars:
             raise ValueError(f"Invalid or date-mismatched compressed chart payload: {path.name}")
         if chart.get("ema_schema") != 2 or chart.get("ema_periods") != [12, 144, 169, 576, 676] or chart.get("ema_source") != "full-history-per-bar":
             raise ValueError(f"Missing full-history EMA series metadata: {path.name}")
+        if chart.get("valid_bars") != stock.get("valid_bars"):
+            raise ValueError(f"Chart history count does not match eligible data: {path.name}")
+        if chart.get("history_complete") is not (len(bars) == chart.get("valid_bars")):
+            raise ValueError(f"Chart history completeness flag is inconsistent: {path.name}")
+        dates = []
+        for bar in bars:
+            if not isinstance(bar, list) or len(bar) != 10 or not isinstance(bar[0], str):
+                raise ValueError(f"Invalid chart bar structure: {path.name}")
+            try:
+                parsed_date = datetime.strptime(bar[0], "%Y-%m-%d").date()
+            except ValueError as error:
+                raise ValueError(f"Invalid chart bar date: {path.name}") from error
+            dates.append(parsed_date)
+            prices = bar[1:5]
+            if any(not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 for value in prices):
+                raise ValueError(f"Invalid chart OHLC values: {path.name}")
+            if prices[1] < max(prices[0], prices[3]) or prices[2] > min(prices[0], prices[3]) or prices[1] < prices[2]:
+                raise ValueError(f"Inconsistent chart OHLC range: {path.name}")
+        if dates != sorted(set(dates)) or dates[-1].isoformat() != chart.get("last_date"):
+            raise ValueError(f"Chart bars are duplicated, unordered, or end on the wrong date: {path.name}")
         for index in range(5):
-            values = [bar[5 + index] for bar in chart["bars"] if isinstance(bar, list) and len(bar) == 10]
-            if len(values) != len(chart["bars"]) or any(value is not None and (not isinstance(value, (int, float)) or value <= 0) for value in values):
+            values = [bar[5 + index] for bar in bars]
+            if any(value is not None and (not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0) for value in values):
                 raise ValueError(f"Invalid full-history EMA values: {path.name}")
 
     return {

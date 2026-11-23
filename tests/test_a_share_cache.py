@@ -186,12 +186,15 @@ class PagesPayloadValidationTests(unittest.TestCase):
   cls.calendar_patch.stop();exchange_closed_days.cache_clear()
  def _write_payload(self, root, dates=("2026-11-09","2026-11-06","2026-11-09"), fetch_errors=0, bad_chart=False):
   data=Path(root)/"data";charts=data/"charts";charts.mkdir(parents=True)
-  cards=[{"symbol":f"CN{i:03d}","status":"ready","latest_close":10.0,"previous_close":9.5} for i in range(500)]
+  cards=[]
   universe=[]
   for i,last_date in enumerate(dates):
    symbol=f"sh60000{i}"
-   universe.append({"symbol":symbol,"last_date":last_date})
-   chart={"symbol":symbol,"last_date":("2026-11-05" if bad_chart and i==0 else last_date),"ema_schema":2,"ema_periods":[12,144,169,576,676],"ema_source":"full-history-per-bar","bars":[[last_date,10,11,9,10,*([10]*5)]]}
+   universe.append({"symbol":symbol,"last_date":last_date,"valid_bars":1})
+   cards.append({"symbol":symbol,"status":"ready","latest_close":10.0,"previous_close":9.5,"last_date":last_date,"valid_bars":1})
+   chart={"symbol":symbol,"last_date":("2026-11-05" if bad_chart and i==0 else last_date),"valid_bars":1,"history_complete":True,"ema_schema":2,"ema_periods":[12,144,169,576,676],"ema_source":"full-history-per-bar","bars":[[last_date,10,11,9,10,*([10]*5)]]}
+  for i in range(500-len(cards)):
+   cards.append({"symbol":f"CN{i:03d}","status":"unavailable","reason":"ST_or_delisted_name"})
    with gzip.open(charts/(symbol+".json.gz"),"wt",encoding="utf-8") as handle:json.dump(chart,handle)
   summary={"universe_size":500,"eligible_count":len(universe),"fetch_error_count":fetch_errors,"market_date":max(dates),"previous_market_date":"2026-11-06","today_signal_count":1,"previous_signal_count":0,"web_ema_policy":"EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars"}
   payloads={"cards.json":cards,"summary.json":summary,"universe.json":universe,"signals.json":[{"symbol":universe[0]["symbol"],"confirmation_date":summary["market_date"]}],"signals.previous.json":[],"trading-calendar.json":{"trading_days":[summary["market_date"]]}}
@@ -206,7 +209,7 @@ class PagesPayloadValidationTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as directory:
    data=self._write_payload(directory)
    cards=json.loads((data/"cards.json").read_text(encoding="utf-8"))
-   cards[0]={"symbol":cards[0]["symbol"],"status":"unavailable","reason":"ST_or_delisted_name"}
+   cards[3]={"symbol":cards[3]["symbol"],"status":"unavailable","reason":"ST_or_delisted_name"}
    (data/"cards.json").write_text(json.dumps(cards),encoding="utf-8")
    self.assertEqual(validate_payload(data)["cards"],500)
  def test_rejects_ready_card_without_quote(self):
@@ -216,6 +219,32 @@ class PagesPayloadValidationTests(unittest.TestCase):
    cards[0].pop("latest_close")
    (data/"cards.json").write_text(json.dumps(cards),encoding="utf-8")
    with self.assertRaisesRegex(ValueError,"Ready CN500 card"):
+    validate_payload(data)
+ def test_rejects_ready_card_missing_from_eligible_universe(self):
+  with tempfile.TemporaryDirectory() as directory:
+   data=self._write_payload(directory)
+   cards=json.loads((data/"cards.json").read_text(encoding="utf-8"))
+   cards[3]={"symbol":cards[3]["symbol"],"status":"ready","latest_close":10.0,"previous_close":9.5,"last_date":"2026-11-09","valid_bars":1}
+   (data/"cards.json").write_text(json.dumps(cards),encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"Ready CN500 cards and eligible universe disagree"):
+    validate_payload(data)
+ def test_rejects_chart_bar_date_not_matching_chart_last_date(self):
+  with tempfile.TemporaryDirectory() as directory:
+   data=self._write_payload(directory)
+   path=data/"charts"/"sh600000.json.gz"
+   with gzip.open(path,"rt",encoding="utf-8") as handle: chart=json.load(handle)
+   chart["bars"][0][0]="2026-11-06"
+   with gzip.open(path,"wt",encoding="utf-8") as handle: json.dump(chart,handle)
+   with self.assertRaisesRegex(ValueError,"duplicated, unordered, or end on the wrong date"):
+    validate_payload(data)
+ def test_rejects_chart_history_flag_mismatch(self):
+  with tempfile.TemporaryDirectory() as directory:
+   data=self._write_payload(directory)
+   path=data/"charts"/"sh600000.json.gz"
+   with gzip.open(path,"rt",encoding="utf-8") as handle: chart=json.load(handle)
+   chart["history_complete"]=False
+   with gzip.open(path,"wt",encoding="utf-8") as handle: json.dump(chart,handle)
+   with self.assertRaisesRegex(ValueError,"history completeness flag is inconsistent"):
     validate_payload(data)
  def test_rejects_calendar_missing_market_date(self):
   with tempfile.TemporaryDirectory() as directory:
