@@ -61,6 +61,8 @@ jobs:
           store="$RUNNER_TEMP/cn-data-store"
           git worktree add --detach "$store" HEAD
           git -C "$store" checkout --orphan cn-data
+          git -C "$store" rm -rf --cached .
+          git -C "$store" clean -fdx
           mkdir -p "$store/site"
           cp -a site/data "$store/site/data"
           git -C "$store" config user.name "github-actions[bot]"
