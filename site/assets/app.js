@@ -26,7 +26,7 @@ function createNonRepeatingQueue(items){
 function chinaCalendarDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function chinaClock(){const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());return Object.fromEntries(parts.filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]))}
 function chinaMinutesOfDay(){const t=chinaClock();return t.hour*60+t.minute}
-function millisecondsUntilDailyRefresh(){const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),target=Date.UTC(t.year,t.month-1,t.day,16,35);if(!dailyCheckCompleted()&&now>=target)return 1000;return Math.max(1000,target>now?target-now:target+86400000-now)}
+function millisecondsUntilDailyRefresh(){const t=chinaClock(),now=Date.UTC(t.year,t.month-1,t.day,t.hour,t.minute),target=Date.UTC(t.year,t.month-1,t.day,10,0);if(!dailyCheckCompleted()&&now>=target)return 1000;return Math.max(1000,target>now?target-now:target+86400000-now)}
 function isTodayPublishedSnapshot(summary){if(!summary||typeof summary.generated_at_utc!=="string")return false;const generated=new Date(summary.generated_at_utc);if(!Number.isFinite(generated.getTime()))return false;return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).format(generated)===chinaCalendarDate()}
 function dailyCheckCompleted(){try{return localStorage.getItem(SIGNAL_CHECK_KEY)===chinaCalendarDate()}catch(_){return false}}
 function markDailyCheckCompleted(){try{localStorage.setItem(SIGNAL_CHECK_KEY,chinaCalendarDate())}catch(_){}}
@@ -140,7 +140,7 @@ async function boot(){
  if(typeof window.updateQuotes==="function")await refreshCards();window.__CN_READY__=true;startForegroundTimers();void refreshLiveMarket();
 }
 async function refreshDailySnapshot(){
- if(destroyed||isHidden()||chinaMinutesOfDay()<995||dailyCheckCompleted())return true;
+ if(destroyed||isHidden()||chinaMinutesOfDay()<600||dailyCheckCompleted())return true;
  try{
   const summary=await refreshSignals();
   if(!isTodayPublishedSnapshot(summary)){console.info("[CN] daily scan is not published yet; will check again without starting another scan");return false}
@@ -153,7 +153,7 @@ function scheduleDailyCheck(){
  if(destroyed||isHidden()||dailyCheckCompleted())return;
  if(dailyRefreshTimer!==null)clearTimeout(dailyRefreshTimer);
  const minutes=chinaMinutesOfDay();
- if(minutes<995){startForegroundTimers();return}
+ if(minutes<600){startForegroundTimers();return}
  if(minutes>=1260){startForegroundTimers();return}
  dailyRefreshTimer=setTimeout(()=>{dailyRefreshTimer=null;void refreshDailySnapshot().then(done=>{if(destroyed||isHidden())return;if(done)startForegroundTimers();else scheduleDailyRetry()})},1000);
 }

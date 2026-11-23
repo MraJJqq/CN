@@ -139,7 +139,7 @@ class CNFrontendContractTests(unittest.TestCase):
   self.assertIn("if(force||!Array.isArray(rows))",self.app)
   self.assertIn("dailyRefreshTimer=setTimeout(",self.app)
   self.assertIn("millisecondsUntilDailyRefresh()",self.app)
-  self.assertIn("chinaMinutesOfDay()<995",self.app)
+  self.assertIn("chinaMinutesOfDay()<600",self.app)
   self.assertNotIn("lifecycle.interval(",self.app)
   self.assertNotIn("60000)",self.app)
   self.assertIn("isTodayPublishedSnapshot(summary)",self.app)
