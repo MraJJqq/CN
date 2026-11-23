@@ -33,7 +33,7 @@ def _load(path: Path):
         raise ValueError(f"Missing or invalid JSON payload: {path.name}") from error
 
 
-def validate_payload(data: Path, expected_market_date: str | None = None) -> dict:
+def validate_payload(data: Path, expected_market_date: str | None = None, verify_official_previous_session: bool = True) -> dict:
     missing = [name for name in REQUIRED_FILES if not (data / name).is_file()]
     if missing:
         raise ValueError(f"Missing Pages data files: {missing}")
@@ -90,9 +90,20 @@ def validate_payload(data: Path, expected_market_date: str | None = None) -> dic
     previous_market_date = summary.get("previous_market_date")
     if not previous_market_date:
         raise ValueError("Summary is missing previous_market_date")
-    expected_previous = previous_a_share_trading_day(datetime.strptime(market_date, "%Y-%m-%d").date()).isoformat()
-    if previous_market_date != expected_previous:
-        raise ValueError("Summary previous_market_date does not match the official prior SSE session")
+    try:
+        market_date_value = datetime.strptime(market_date, "%Y-%m-%d").date()
+        previous_date_value = datetime.strptime(previous_market_date, "%Y-%m-%d").date()
+    except (TypeError, ValueError) as error:
+        raise ValueError("Summary market dates must use YYYY-MM-DD") from error
+    if previous_date_value >= market_date_value:
+        raise ValueError("Summary previous_market_date must precede market_date")
+    # A normal scan verifies against the live official SSE calendar. A frontend-only
+    # restore validates a previously accepted snapshot offline, avoiding a new
+    # dependency on SSE availability while publishing an unchanged data artifact.
+    if verify_official_previous_session:
+        expected_previous = previous_a_share_trading_day(market_date_value).isoformat()
+        if previous_market_date != expected_previous:
+            raise ValueError("Summary previous_market_date does not match the official prior SSE session")
 
     symbols = [row.get("symbol") for row in universe if isinstance(row, dict)]
     if len(symbols) != len(universe) or len(set(symbols)) != len(symbols) or any(not isinstance(symbol, str) or not symbol for symbol in symbols):
@@ -191,6 +202,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=root / "site" / "data")
     args = parser.parse_args()
     expected = None
+    verify_official_previous_session = not args.allow_previous_snapshot
     if not args.allow_previous_snapshot:
         now = datetime.now(ZoneInfo("Asia/Shanghai"))
         run_date = china_today()
@@ -201,7 +213,11 @@ def main() -> None:
             else previous_a_share_trading_day(run_date)
         )
         expected = expected_session.isoformat()
-    result = validate_payload(args.data_dir, expected_market_date=expected)
+    result = validate_payload(
+        args.data_dir,
+        expected_market_date=expected,
+        verify_official_previous_session=verify_official_previous_session,
+    )
     print(
         "Pages payload verified: "
         f'{result["cards"]} CN500 cards, {result["eligible"]} eligible charts, '

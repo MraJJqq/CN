@@ -266,6 +266,11 @@ class PagesPayloadValidationTests(unittest.TestCase):
    (data/"summary.json").write_text(json.dumps(summary),encoding="utf-8")
    with self.assertRaisesRegex(ValueError,"official prior SSE session"):
     validate_payload(data,expected_market_date="2026-11-09")
+ def test_previous_snapshot_validation_does_not_fetch_live_exchange_calendar(self):
+  with tempfile.TemporaryDirectory() as directory:
+   with patch("scripts.validate_pages_payload.previous_a_share_trading_day",side_effect=AssertionError("network calendar must not be queried")):
+    result=validate_payload(self._write_payload(directory),verify_official_previous_session=False)
+   self.assertEqual(result["market_date"],"2026-11-09")
 
  def test_rejects_stale_market_date_even_when_payload_is_internally_consistent(self):
   with tempfile.TemporaryDirectory() as directory:
