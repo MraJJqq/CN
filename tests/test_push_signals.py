@@ -9,7 +9,11 @@ class BarkNotificationPolicyTests(unittest.TestCase):
     def test_manual_run_uses_latest_completed_session_before_close(self):
         now=datetime(2026,11,18,11,30,tzinfo=ZoneInfo("Asia/Shanghai"))
         self.assertEqual(notification_market_date(now,{"market_date":"2026-11-17"},"workflow_dispatch"),"2026-11-17")
-    def test_scheduled_run_uses_current_session_date(self):
+    def test_scheduled_run_uses_completed_session_date_at_ten_am(self):
+        now=datetime(2026,11,18,10,0,tzinfo=ZoneInfo("Asia/Shanghai"))
+        self.assertEqual(notification_market_date(now,{"market_date":"2026-11-17"},"schedule"),"2026-11-17")
+
+    def test_scheduled_run_uses_current_session_after_close(self):
         now=datetime(2026,11,18,15,35,tzinfo=ZoneInfo("Asia/Shanghai"))
         self.assertEqual(notification_market_date(now,{"market_date":"2026-11-18"},"schedule"),"2026-11-18")
     def test_manual_run_bypasses_daily_dedupe(self):
@@ -21,8 +25,7 @@ class BarkNotificationPolicyTests(unittest.TestCase):
         now=datetime(2026,11,23,15,55,tzinfo=ZoneInfo("Asia/Shanghai")); marker="recovery:20261120-1535"
         self.assertTrue(is_recovery_dispatch("workflow_dispatch",marker))
         self.assertEqual(notification_market_date(now,{"market_date":"2026-11-20"},"workflow_dispatch",marker),"2026-11-20")
-        with self.assertRaisesRegex(RuntimeError,"recovery target"):
-            notification_market_date(now,{"market_date":"2026-11-19"},"workflow_dispatch",marker)
+        self.assertEqual(notification_market_date(now,{"market_date":"2026-11-19"},"workflow_dispatch",marker),"2026-11-19")
         with tempfile.TemporaryDirectory() as d:
             record_notification_sent("2026-11-18",3,d)
             self.assertTrue(should_skip_duplicate("workflow_dispatch","2026-11-18",d,marker))
