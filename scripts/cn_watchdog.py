@@ -3,7 +3,7 @@ from __future__ import annotations
 import json, os, urllib.request
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
-TZ=ZoneInfo("Asia/Shanghai"); DUE=time(15,35); GRACE_MINUTES=15; LOCK_TIMEOUT_MINUTES=20
+TZ=ZoneInfo("Asia/Shanghai"); DUE=time(10,0); GRACE_MINUTES=15; LOCK_TIMEOUT_MINUTES=20
 def recovery_marker(day):
     return "recovery:"+datetime.combine(day,DUE,tzinfo=TZ).strftime("%Y%m%d-%H%M")
 

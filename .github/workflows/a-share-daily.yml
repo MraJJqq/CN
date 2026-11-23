@@ -9,7 +9,7 @@ on:
         type: string
         default: ""
   schedule:
-    - cron: "35 7 * * 1-5"
+    - cron: "0 2 * * 1-5"
 concurrency:
   group: cn-a-share-daily
   cancel-in-progress: false

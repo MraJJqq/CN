@@ -70,12 +70,14 @@ function flush(i){
 /* ---- 布局（尺寸变化时才算） ---- */
 var Wd=0,Hd=0,bs=1,Rx=1,Ry=0,x0=0,y0=0;
 function layout(){
-  Wd=vp.clientWidth;Hd=vp.clientHeight;
-  /* 小屏减少可见卡片数量，优先保证卡片文字可读；卡片原始样式与交互不变。 */
+  var nextWidth=vp.clientWidth,nextHeight=vp.clientHeight;
+  if(nextWidth===Wd&&nextHeight===Hd)return;
+  Wd=nextWidth;Hd=nextHeight;
+  /* Match V9/Backup responsive card sizing while retaining CN's dynamic signal count. */
   SHOW=Wd<500?2.2:Wd<900?2.8:3.6;
   A=SHOW*step;
-  var maxCardW=Math.min(W,Math.max(128,Math.min(172,Wd/2.7)));
-  var maxCardH=Math.min(H,Math.max(72,Hd*.9));
+  var maxCardW=Math.min(W,Math.max(112,Math.min(172,Wd/3.2)));
+  var maxCardH=Math.min(H,Math.max(58,Hd*.78));
   bs=Math.min(maxCardW/W,maxCardH/H);
   var cw=W*bs;
   Rx=cw*1.08/step;
@@ -194,8 +196,8 @@ function relayout(){lr=0;layout();wake()}
 if("ResizeObserver" in window){resizeObserver=new ResizeObserver(function(){if(!lr)lr=requestAnimationFrame(relayout)});resizeObserver.observe(vp)}
 else{resizeFallback=function(){if(!lr)lr=requestAnimationFrame(relayout)};addEventListener("resize",resizeFallback)}
 function releaseDrag(){if(pid!==-1&&drag)window.parent.postMessage({type:"VEGAS_CARD_INTERACTION",active:false},location.origin);pid=-1;drag=false;tapSymbol=null;sn=0;vel=0}
-window.addEventListener("pagehide",function(e){stop();releaseDrag();if(!e.persisted){intersectionObserver?.disconnect();resizeObserver?.disconnect();if(resizeFallback)removeEventListener("resize",resizeFallback);if(lr)cancelAnimationFrame(lr);lr=0}});
-window.addEventListener("pageshow",function(){if(!document.hidden)wake()});
+window.addEventListener("pagehide",function(){stop();releaseDrag();intersectionObserver?.disconnect();resizeObserver?.disconnect();if(resizeFallback)removeEventListener("resize",resizeFallback);if(lr)cancelAnimationFrame(lr);lr=0});
+window.addEventListener("pageshow",function(){if(intersectionObserver)intersectionObserver.observe(ring);if(resizeObserver)resizeObserver.observe(vp);if(!document.hidden)wake()});
 
 /* ---- 与父页面共用同一份随机轮播顺序 ---- */
 window.setCardOrder=function(symbols){
@@ -207,6 +209,12 @@ window.setCardOrder=function(symbols){
     if(index<0||seen[index])return false;
     next[slot]=index;seen[index]=1;
   }
+  /* Identical signal order must not reset the user's current carousel position. */
+  var unchanged=symbols.length===activeCount;
+  if(unchanged){for(var same=0;same<activeCount;same++){if(order[same]!==next[same]){unchanged=false;break}}}
+  if(unchanged){wake();return true}
+  /* If the active signal set changes during a drag, release the parent interaction lock. */
+  if(pid!==-1||drag)releaseDrag();
   for(var old=0;old<activeCount;old++){
     var oldIndex=order[old];
     if(!seen[oldIndex]&&els[oldIndex]){hid[oldIndex]=1;op[oldIndex]=0;els[oldIndex].style.opacity=0;els[oldIndex].classList.remove("is-visible");els[oldIndex].style.pointerEvents="none";els[oldIndex].remove()}

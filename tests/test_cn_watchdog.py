@@ -1,36 +1,56 @@
-from __future__ import annotations
-import sys,unittest
-from datetime import date,datetime
-from pathlib import Path
+import unittest
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scripts.cn_watchdog import recovery_is_due,recovery_marker,recovery_run_window,recovery_session_day
-TZ=ZoneInfo("Asia/Shanghai")
+
+from scripts import cn_watchdog
+
+TZ = ZoneInfo("Asia/Shanghai")
+
+
+def is_trading_day(day):
+    return day.weekday() < 5
+
+
+def previous_trading_day(day):
+    candidate = day - timedelta(days=1)
+    while not is_trading_day(candidate):
+        candidate -= timedelta(days=1)
+    return candidate
+
+
 class CNWatchdogScheduleTests(unittest.TestCase):
-    def test_recovery_starts_at_1550_china_time(self):
-        self.assertFalse(recovery_is_due(datetime(2026,11,23,15,49,tzinfo=TZ)))
-        self.assertTrue(recovery_is_due(datetime(2026,11,23,15,50,tzinfo=TZ)))
-    def test_recovery_does_not_run_on_weekends(self):
-        self.assertFalse(recovery_is_due(datetime(2026,11,22,16,0,tzinfo=TZ)))
-    def test_recovery_marker_is_unique_per_session(self):
-        self.assertEqual(recovery_marker(date(2026,11,23)),"recovery:20261123-1535")
-    def test_run_window_includes_delayed_run_after_midnight_but_not_next_close(self):
-        start,end=recovery_run_window(date(2026,11,20))
-        self.assertEqual(start,datetime(2026,11,20,15,20,tzinfo=TZ))
-        self.assertEqual(end,datetime(2026,11,21,15,20,tzinfo=TZ))
-    def test_weekend_watchdog_does_not_dispatch_automatic_recovery(self):
-        now=datetime(2026,11,22,16,0,tzinfo=TZ)
-        is_trading=lambda day: day.weekday()<5
-        previous=lambda day: date(2026,11,20)
-        self.assertIsNone(recovery_session_day(now,is_trading,previous))
-    def test_before_today_recovery_cutoff_targets_previous_session(self):
-        now=datetime(2026,11,23,15,45,tzinfo=TZ)
-        is_trading=lambda day: day.weekday()<5
-        previous=lambda day: date(2026,11,20)
-        self.assertEqual(recovery_session_day(now,is_trading,previous),date(2026,11,20))
-    def test_after_today_recovery_cutoff_targets_today(self):
-        now=datetime(2026,11,23,15,55,tzinfo=TZ)
-        is_trading=lambda day: day.weekday()<5
-        previous=lambda day: date(2026,11,20)
-        self.assertEqual(recovery_session_day(now,is_trading,previous),date(2026,11,23))
-if __name__=="__main__": unittest.main()
+    def test_scan_due_time_is_1000_china_time(self):
+        self.assertEqual(cn_watchdog.DUE, time(10, 0))
+        self.assertEqual(cn_watchdog.GRACE_MINUTES, 15)
+
+    def test_recovery_grace_ends_at_1015(self):
+        before = datetime(2026, 11, 23, 10, 14, tzinfo=TZ)
+        due = datetime(2026, 11, 23, 10, 15, tzinfo=TZ)
+        self.assertFalse(cn_watchdog.recovery_is_due(before))
+        self.assertTrue(cn_watchdog.recovery_is_due(due))
+
+    def test_session_resolution_uses_previous_completed_session_before_grace(self):
+        current = datetime(2026, 11, 23, 10, 14, tzinfo=TZ)
+        self.assertEqual(
+            cn_watchdog.recovery_session_day(current, is_trading_day, previous_trading_day),
+            date(2026, 11, 20),
+        )
+
+    def test_session_resolution_switches_to_today_after_grace(self):
+        current = datetime(2026, 11, 23, 10, 15, tzinfo=TZ)
+        self.assertEqual(
+            cn_watchdog.recovery_session_day(current, is_trading_day, previous_trading_day),
+            date(2026, 11, 23),
+        )
+
+    def test_recovery_window_tracks_ten_am_scan(self):
+        start, end = cn_watchdog.recovery_run_window(date(2026, 11, 23))
+        self.assertEqual(start, datetime(2026, 11, 23, 9, 45, tzinfo=TZ))
+        self.assertEqual(end, datetime(2026, 11, 24, 9, 45, tzinfo=TZ))
+
+    def test_recovery_marker_uses_ten_am_slot(self):
+        self.assertEqual(cn_watchdog.recovery_marker(date(2026, 11, 23)), "recovery:20261123-1000")
+
+
+if __name__ == "__main__":
+    unittest.main()
