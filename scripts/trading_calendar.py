@@ -142,8 +142,12 @@ def upcoming_trading_days(start: date, count: int = 40) -> list[str]:
 
 def build_status(day: date) -> dict:
     trading = is_a_share_trading_day(day)
+    scan_day = china_today()
+    scan_day_is_trading = is_a_share_trading_day(scan_day)
     return {
         "date": day.isoformat(),
+        "scan_date": scan_day.isoformat(),
+        "is_scan_day": scan_day_is_trading,
         "timezone": "Asia/Shanghai",
         "is_trading_day": trading,
         "trading_days": upcoming_trading_days(day),
@@ -176,6 +180,7 @@ def main() -> int:
     if args.github_output:
         with Path(args.github_output).open("a", encoding="utf-8") as handle:
             handle.write(f"is-trading-day={'true' if status['is_trading_day'] else 'false'}\n")
+            handle.write(f"is-scan-day={'true' if status['is_scan_day'] else 'false'}\n")
             handle.write(f"trade-date={day.isoformat()}\n")
 
     print(json.dumps(status, ensure_ascii=False), flush=True)
