@@ -193,9 +193,9 @@ class PagesPayloadValidationTests(unittest.TestCase):
    universe.append({"symbol":symbol,"last_date":last_date,"valid_bars":1})
    cards.append({"symbol":symbol,"status":"ready","latest_close":10.0,"previous_close":9.5,"last_date":last_date,"valid_bars":1})
    chart={"symbol":symbol,"last_date":("2026-11-05" if bad_chart and i==0 else last_date),"valid_bars":1,"history_complete":True,"ema_schema":2,"ema_periods":[12,144,169,576,676],"ema_source":"full-history-per-bar","bars":[[last_date,10,11,9,10,*([10]*5)]]}
+   with gzip.open(charts/(symbol+".json.gz"),"wt",encoding="utf-8") as handle:json.dump(chart,handle)
   for i in range(500-len(cards)):
    cards.append({"symbol":f"CN{i:03d}","status":"unavailable","reason":"ST_or_delisted_name"})
-   with gzip.open(charts/(symbol+".json.gz"),"wt",encoding="utf-8") as handle:json.dump(chart,handle)
   summary={"universe_size":500,"eligible_count":len(universe),"fetch_error_count":fetch_errors,"market_date":max(dates),"previous_market_date":"2026-11-06","today_signal_count":1,"previous_signal_count":0,"web_ema_policy":"EMA12/144/169/576/676 calculated from the full available 10-year Tencent history and aligned to displayed bars"}
   payloads={"cards.json":cards,"summary.json":summary,"universe.json":universe,"signals.json":[{"symbol":universe[0]["symbol"],"confirmation_date":summary["market_date"]}],"signals.previous.json":[],"trading-calendar.json":{"trading_days":[summary["market_date"]]}}
   for name,value in payloads.items():(data/name).write_text(json.dumps(value),encoding="utf-8")
