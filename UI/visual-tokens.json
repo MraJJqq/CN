@@ -1,0 +1,25 @@
+{
+  "source": "MraJJqq/Media@601754a7b5033c3380956e2eae7f3efb433ca7d9",
+  "colors": {
+    "text": "#f2f5ff",
+    "card_up": "#00f5a0",
+    "card_down": "#ff3b6b",
+    "ema12": "#f5d76e",
+    "ema144_ema169": "#f4d35e",
+    "ema576_ema676": "#ff4e5e",
+    "candle_up": "#22b07d",
+    "candle_down": "#e5484d"
+  },
+  "typography": {
+    "font_stack": "-apple-system, SF Pro Display, PingFang SC, Roboto, sans-serif",
+    "card_symbol": "12px / 700",
+    "card_price": "22px / 800",
+    "card_change": "9px / 700"
+  },
+  "card": {
+    "width_px": 172,
+    "height_px": 100,
+    "radius_px": 14
+  },
+  "page_background": "#0B1020"
+}
